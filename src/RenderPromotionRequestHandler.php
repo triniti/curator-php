@@ -184,7 +184,14 @@ class RenderPromotionRequestHandler implements RequestHandler
             $response = $pbjx->copyContext($request, $renderRequest)->request($renderRequest);
             return $response;
         } catch (\Throwable $e) {
-            return null;
+            $this->logger->warning(
+                'Unable to renderWidget for request [{pbj_schema}]',
+                [
+                    'exception'  => $e,
+                    'pbj_schema' => $request->schema()->getId()->toString(),
+                    'pbj'        => $request->toArray(),
+                ]
+            );
         }
     }
 

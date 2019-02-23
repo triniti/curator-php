@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 0.x versions.
 
 
+## v0.1.2
+* Log caught exceptions in `RenderPromotionRequestHandler` `renderWidget`.
+
+
 ## v0.1.1
 * Add handlers for `triniti:curator:mixin:render-promotion-request` and `triniti:curator:mixin:render-widget-request`.
 * Add twig extension with functions `curator_render_promotion` and `curator_render_widget`.
