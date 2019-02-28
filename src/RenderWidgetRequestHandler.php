@@ -63,11 +63,6 @@ class RenderWidgetRequestHandler implements RequestHandler
             return $response;
         }
 
-        if (NodeStatus::DELETED()->equals($widget->get('status'))) {
-            // a deleted widget cannot speak
-            return $response;
-        }
-
         $searchResponse = $this->runWidgetSearchRequest($widget, $request, $pbjx);
 
         /** @var RenderContext $context */
@@ -92,6 +87,8 @@ class RenderWidgetRequestHandler implements RequestHandler
             $name = str_replace($deviceView, '', $name);
         }
 
+        $hasNodes = null !== $searchResponse ? $searchResponse->has('nodes') : false;
+
         try {
             $html = $this->twig->render($name, [
                 'pbj'             => $widget,
@@ -99,6 +96,7 @@ class RenderWidgetRequestHandler implements RequestHandler
                 'context'         => $context,
                 'render_request'  => $request,
                 'search_response' => $searchResponse,
+                'has_nodes'       => $hasNodes,
                 'device_view'     => $context->get('device_view'),
                 'viewer_country'  => $context->get('viewer_country'),
             ]);

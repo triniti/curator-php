@@ -2,6 +2,12 @@
 This changelog references the relevant changes done in 0.x versions.
 
 
+## v0.1.3
+* Ensure all widgets are published when updated.  Cheap "restore" option.
+* Allow deleted widgets to render.
+* Add `has_nodes` variable to twig context when rendering widgets.  Will be true when search response has nodes.
+
+
 ## v0.1.2
 * Log caught exceptions in `RenderPromotionRequestHandler` `renderWidget`.
 

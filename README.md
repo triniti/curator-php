@@ -82,6 +82,9 @@ $output = $this->twig->render($name, [
     'context'         => $context,
     'render_request'  => $request,
     'search_response' => $searchResponse,
+    'has_nodes'       => $hasNodes,
+    'device_view'     => $context->get('device_view'),
+    'viewer_country'  => $context->get('viewer_country'),
 ]);
 ```
 

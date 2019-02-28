@@ -29,9 +29,8 @@ class UpdateWidgetHandler extends AbstractUpdateNodeHandler
         $newNode = $event->get('new_node');
 
         // widgets are only published or deleted, enforce it.
-        if (!NodeStatus::DELETED()->equals($newNode->get('status'))) {
-            $newNode->set('status', NodeStatus::PUBLISHED());
-        }
+        // if we're updating the widget, force it to be published.
+        $newNode->set('status', NodeStatus::PUBLISHED());
     }
 
     /**
