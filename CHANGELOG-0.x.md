@@ -2,6 +2,12 @@
 This changelog references the relevant changes done in 0.x versions.
 
 
+## v0.1.4
+* Add more search fields in `SearchGalleriesRequestHandler`, `SearchTeasersRequestHandler`, `SearchTimelinesRequestHandler`.
+* Add logic to `TeaserableEnricher` to ensure `order_date` field auto updates to `published_at` when the last event was `NodePublished`.
+* Add find template logic to `RenderWidgetRequestHandler` so developer experience is better.
+
+
 ## v0.1.3
 * Ensure all widgets are published when updated.  Cheap "restore" option.
 * Allow deleted widgets to render.

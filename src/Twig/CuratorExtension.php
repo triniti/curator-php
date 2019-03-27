@@ -11,18 +11,14 @@ use Gdbots\Schemas\Ncr\NodeRef;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Triniti\Schemas\Common\RenderContext;
 use Triniti\Schemas\Common\RenderContextV1;
-use Triniti\Schemas\Curator\Mixin\Promotion\Promotion;
-use Triniti\Schemas\Curator\Mixin\RenderPromotionRequest\RenderPromotionRequest;
 use Triniti\Schemas\Curator\Mixin\RenderPromotionRequest\RenderPromotionRequestV1Mixin;
-use Triniti\Schemas\Curator\Mixin\RenderPromotionResponse\RenderPromotionResponse;
-use Triniti\Schemas\Curator\Mixin\RenderWidgetRequest\RenderWidgetRequest;
 use Triniti\Schemas\Curator\Mixin\RenderWidgetRequest\RenderWidgetRequestV1Mixin;
-use Triniti\Schemas\Curator\Mixin\RenderWidgetResponse\RenderWidgetResponse;
-use Triniti\Schemas\Curator\Mixin\Widget\Widget;
+use Twig\Environment;
+use Twig\Extension\AbstractExtension;
+use Twig\TwigFunction;
 
-final class CuratorExtension extends \Twig_Extension
+final class CuratorExtension extends AbstractExtension
 {
     /** @var PhpArraySerializer */
     private static $serializer;
@@ -54,13 +50,13 @@ final class CuratorExtension extends \Twig_Extension
     public function getFunctions()
     {
         return [
-            new \Twig_SimpleFunction(
+            new TwigFunction(
                 'curator_render_widget',
                 [$this, 'renderWidget'],
                 ['needs_environment' => true, 'is_safe' => ['html']]
             ),
 
-            new \Twig_SimpleFunction(
+            new TwigFunction(
                 'curator_render_promotion',
                 [$this, 'renderPromotion'],
                 ['needs_environment' => true, 'is_safe' => ['html']]
@@ -77,21 +73,21 @@ final class CuratorExtension extends \Twig_Extension
     }
 
     /**
-     * @param \Twig_Environment           $twig
-     * @param Widget|NodeRef|array|string $widget
-     * @param RenderContext|array         $context
-     * @param bool                        $returnResponse For when you want the raw render response and not its html.
-     *                                                    This is some next level shit here folks.
+     * @param Environment                  $twig
+     * @param Message|NodeRef|array|string $widget
+     * @param Message|array                $context
+     * @param bool                         $returnResponse For when you want the raw render response and not its html.
+     *                                                     This is some next level shit here folks.
      *
-     * @return string|null|RenderWidgetResponse
+     * @return string|null|Message
      */
-    public function renderWidget(\Twig_Environment $twig, $widget, $context = [], bool $returnResponse = false)
+    public function renderWidget(Environment $twig, $widget, $context = [], bool $returnResponse = false)
     {
         try {
-            /** @var RenderWidgetRequest $request */
+            /** @var Message $request */
             $request = RenderWidgetRequestV1Mixin::findOne()->createMessage();
 
-            if (!$context instanceof RenderContext) {
+            if (!$context instanceof Message) {
                 $container = $context['container'] ?? null;
                 if ($container instanceof Message) {
                     unset($context['container']);
@@ -106,7 +102,7 @@ final class CuratorExtension extends \Twig_Extension
             $this->enrichContext($context);
             $request->set('context', $context);
 
-            if ($widget instanceof Widget) {
+            if ($widget instanceof Message) {
                 $request->set('widget', $widget);
             } elseif ($widget instanceof NodeRef) {
                 $request->set('widget_ref', $widget);
@@ -123,7 +119,7 @@ final class CuratorExtension extends \Twig_Extension
             // ensures permission check is bypassed
             $request->set('ctx_causator_ref', $request->generateMessageRef());
 
-            /** @var RenderWidgetResponse $response */
+            /** @var Message $response */
             $response = $this->pbjx->request($request);
 
             return $returnResponse ? $response : trim($response->get('html', ''));
@@ -132,14 +128,14 @@ final class CuratorExtension extends \Twig_Extension
                 throw $e;
             }
 
-            $widgetRef = $widget instanceof Widget ? NodeRef::fromNode($widget) : $widget;
+            $widgetRef = $widget instanceof Message ? NodeRef::fromNode($widget) : $widget;
             $this->logger->warning(
                 'curator_render_widget failed to render [{widget_ref}].',
                 [
                     'exception'      => $e,
                     'widget_ref'     => (string)$widgetRef,
-                    'widget'         => $widget instanceof Widget ? $widget->toArray() : $widget,
-                    'render_context' => $context instanceof RenderContext ? $context->toArray() : $context,
+                    'widget'         => $widget instanceof Message ? $widget->toArray() : $widget,
+                    'render_context' => $context instanceof Message ? $context->toArray() : $context,
                 ]
             );
         }
@@ -148,20 +144,20 @@ final class CuratorExtension extends \Twig_Extension
     }
 
     /**
-     * @param \Twig_Environment   $twig
-     * @param string              $slot
-     * @param RenderContext|array $context
-     * @param bool                $returnResponse For when you want the raw render response.
+     * @param Environment   $twig
+     * @param string        $slot
+     * @param Message|array $context
+     * @param bool          $returnResponse For when you want the raw render response.
      *
-     * @return string|null|RenderPromotionResponse
+     * @return string|null|Message
      */
-    public function renderPromotion(\Twig_Environment $twig, string $slot, $context = [], bool $returnResponse = false)
+    public function renderPromotion(Environment $twig, string $slot, $context = [], bool $returnResponse = false)
     {
         try {
-            /** @var RenderPromotionRequest $request */
+            /** @var Message $request */
             $request = RenderPromotionRequestV1Mixin::findOne()->createMessage();
 
-            if (!$context instanceof RenderContext) {
+            if (!$context instanceof Message) {
                 $container = $context['container'] ?? null;
                 if ($container instanceof Message) {
                     unset($context['container']);
@@ -184,7 +180,7 @@ final class CuratorExtension extends \Twig_Extension
             // ensures permission check is bypassed
             $request->set('ctx_causator_ref', $request->generateMessageRef());
 
-            /** @var RenderPromotionResponse $response */
+            /** @var Message $response */
             $response = $this->pbjx->request($request);
 
             if ($returnResponse) {
@@ -193,13 +189,13 @@ final class CuratorExtension extends \Twig_Extension
 
             $html = ["<!-- start: promotion-slot ${slot} -->"];
 
-            /** @var Promotion $promotion */
+            /** @var Message $promotion */
             $promotion = $response->get('promotion');
             if (null !== $promotion) {
                 $html[] = trim($promotion->get('pre_render_code', ''));
             }
 
-            /** @var RenderWidgetResponse $renderWidgetResponse */
+            /** @var Message $renderWidgetResponse */
             foreach ($response->get('widgets', []) as $renderWidgetResponse) {
                 $html[] = trim($renderWidgetResponse->get('html', ''));
             }
@@ -221,7 +217,7 @@ final class CuratorExtension extends \Twig_Extension
                 [
                     'exception'      => $e,
                     'slot'           => $slot,
-                    'render_context' => $context instanceof RenderContext ? $context->toArray() : $context,
+                    'render_context' => $context instanceof Message ? $context->toArray() : $context,
                 ]
             );
         }
@@ -230,9 +226,9 @@ final class CuratorExtension extends \Twig_Extension
     }
 
     /**
-     * @param RenderContext $context
+     * @param Message $context
      */
-    private function enrichContext(RenderContext $context): void
+    private function enrichContext(Message $context): void
     {
         if ($context->isFrozen()) {
             return;

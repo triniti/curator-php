@@ -65,15 +65,17 @@ __Example:__
 
 This function will render the widget using Twig by resolving the context and the widget type to a Twig template.  The filename requested must be in the Twig [namespaced path](http://symfony.com/doc/current/templating/namespaced_paths.html) `@curator_widgets`.  All segments are optional except the platform, which defaults to "web".
 
-__Template pattern:__
-> `@curator_widgets/{$platform}/{$section}%s/%s{$deviceView}.twig`
+__First template found is used:__
+
+- `@curator_widgets/{$platform}/{$section}/{$widgetName}/{$widgetName}.{$deviceView}.twig`
+- `@curator_widgets/{$platform}/{$section}/{$widgetName}/{$widgetName}.twig`
+- `@curator_widgets/{$platform}/{$blockName}/{$widgetName}.{$deviceView}.twig`
+- `@curator_widgets/{$platform}/{$blockName}/{$widgetName}.twig`
+- `@curator_widgets/{$platform}/missing_widget.twig`
 
 __Example output:__
 > e.g. `@curator_widgets/web/blogroll/slider_widget/slider_widget.smartphone.twig`
 
-__IMPORTANT:__ When using the `device_view` option if the device specific template does not exist then unqualified version will be used.  For example, if `slider_widget.smartphone.twig` is not found, then it will attempt to use `slider_widget.twig`.
-
-The payload provided to the template:
 
 ```php
 $output = $this->twig->render($name, [

@@ -11,10 +11,12 @@ use Triniti\Curator\RenderWidgetRequestHandler;
 use Triniti\Curator\Twig\CuratorExtension;
 use Triniti\Schemas\Common\RenderContextV1;
 use Triniti\Schemas\Curator\Mixin\RenderWidgetResponse\RenderWidgetResponse;
+use Twig\Environment;
+use Twig\Loader\FilesystemLoader;
 
 final class RenderWidgetRequestHandlerTest extends AbstractPbjxTest
 {
-    /** @var \Twig_Environment */
+    /** @var Environment */
     private $twig;
 
     /** @var RenderWidgetRequestHandler */
@@ -24,9 +26,9 @@ final class RenderWidgetRequestHandlerTest extends AbstractPbjxTest
     {
         parent::setup();
 
-        $loader = new \Twig_Loader_Filesystem(__DIR__ . '/Fixtures/templates/');
+        $loader = new FilesystemLoader(__DIR__ . '/Fixtures/templates/');
         $loader->addPath(realpath(__DIR__ . '/Fixtures/templates/'), 'curator_widgets');
-        $this->twig = new \Twig_Environment($loader, ['debug' => true]);
+        $this->twig = new Environment($loader, ['debug' => true]);
         $this->twig->addExtension(new CuratorExtension($this->pbjx, new RequestStack()));
 
         $this->handler = new RenderWidgetRequestHandler($this->ncr, $this->twig);

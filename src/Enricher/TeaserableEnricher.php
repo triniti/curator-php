@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 namespace Triniti\Curator\Enricher;
 
+use Gdbots\Ncr\Event\BeforePutNodeEvent;
 use Gdbots\Pbjx\DependencyInjection\PbjxEnricher;
 use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Pbjx\EventSubscriber;
-use Triniti\Schemas\Curator\Mixin\Teaserable\Teaserable;
+use Gdbots\Schemas\Ncr\Mixin\NodePublished\NodePublished;
 
 final class TeaserableEnricher implements EventSubscriber, PbjxEnricher
 {
@@ -16,7 +17,10 @@ final class TeaserableEnricher implements EventSubscriber, PbjxEnricher
     public static function getSubscribedEvents()
     {
         return [
-            'triniti:curator:mixin:teaserable.enrich' => 'enrichWithOrderDate',
+            'triniti:curator:mixin:teaser.enrich'              => 'enrichWithOrderDate',
+            'triniti:curator:mixin:teaser.before_put_node'     => 'enrichWithOrderDate',
+            'triniti:curator:mixin:teaserable.enrich'          => 'enrichWithOrderDate',
+            'triniti:curator:mixin:teaserable.before_put_node' => 'enrichWithOrderDate',
         ];
     }
 
@@ -29,17 +33,23 @@ final class TeaserableEnricher implements EventSubscriber, PbjxEnricher
      */
     public function enrichWithOrderDate(PbjxEvent $pbjxEvent): void
     {
-        /** @var Teaserable $node */
         $node = $pbjxEvent->getMessage();
-        if ($node->isFrozen() || $node->has('order_date')) {
+        if ($node->isFrozen()) {
             return;
         }
 
-        if ($node->has('published_at')) {
-            $node->set('order_date', $node->get('published_at'));
+        if ($pbjxEvent instanceof BeforePutNodeEvent) {
+            $lastEvent = $pbjxEvent->getLastEvent();
+            if ($lastEvent instanceof NodePublished) {
+                $node->set('order_date', $lastEvent->get('published_at'));
+                return;
+            }
+        }
+
+        if ($node->has('order_date')) {
             return;
         }
 
-        $node->set('order_date', $node->get('updated_at', $node->get('created_at'))->toDateTime());
+        $node->set('order_date', $node->get('created_at')->toDateTime());
     }
 }

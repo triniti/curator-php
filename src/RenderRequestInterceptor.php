@@ -172,7 +172,12 @@ class RenderRequestInterceptor implements EventSubscriber
         if ($context->has('container')) {
             /** @var Message $container */
             $container = $context->get('container');
-            $containerEtag = $container->get('etag') ?: $container->generateEtag(['etag', 'updated_at']);
+            $containerEtag = $container->get('etag') ?: $container->generateEtag([
+                'etag',
+                'updated_at',
+                'updater_ref',
+                'last_event_ref',
+            ]);
         }
 
         // crr (curator render request) prefix is to avoid collision
