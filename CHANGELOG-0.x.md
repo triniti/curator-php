@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 0.x versions.
 
 
+## v0.1.5
+* Update gallery `image_count` when new image asset nodes are added.
+
+
 ## v0.1.4
 * Add more search fields in `SearchGalleriesRequestHandler`, `SearchTeasersRequestHandler`, `SearchTimelinesRequestHandler`.
 * Add logic to `TeaserableEnricher` to ensure `order_date` field auto updates to `published_at` when the last event was `NodePublished`.

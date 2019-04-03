@@ -4,9 +4,12 @@ declare(strict_types=1);
 namespace Triniti\Curator;
 
 use Gdbots\Ncr\AbstractNodeProjector;
+use Gdbots\Pbj\Message;
 use Gdbots\Pbjx\EventSubscriber;
 use Gdbots\Pbjx\EventSubscriberTrait;
 use Gdbots\Pbjx\Pbjx;
+use Gdbots\Schemas\Ncr\Enum\NodeStatus;
+use Gdbots\Schemas\Ncr\Mixin\Node\Node;
 use Gdbots\Schemas\Ncr\Mixin\NodeCreated\NodeCreated;
 use Gdbots\Schemas\Ncr\Mixin\NodeDeleted\NodeDeleted;
 use Gdbots\Schemas\Ncr\Mixin\NodeExpired\NodeExpired;
@@ -17,7 +20,11 @@ use Gdbots\Schemas\Ncr\Mixin\NodeRenamed\NodeRenamed;
 use Gdbots\Schemas\Ncr\Mixin\NodeScheduled\NodeScheduled;
 use Gdbots\Schemas\Ncr\Mixin\NodeUnpublished\NodeUnpublished;
 use Gdbots\Schemas\Ncr\Mixin\NodeUpdated\NodeUpdated;
+use Gdbots\Schemas\Ncr\NodeRef;
 use Triniti\Schemas\Curator\Mixin\Gallery\GalleryV1Mixin;
+use Triniti\Schemas\Dam\Mixin\ImageAsset\ImageAsset;
+use Triniti\Schemas\Dam\Mixin\ImageAsset\ImageAssetV1Mixin;
+use Triniti\Schemas\Dam\Mixin\SearchAssetsRequest\SearchAssetsRequestV1Mixin;
 
 class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscriber
 {
@@ -28,10 +35,45 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
      */
     public static function getSubscribedEvents()
     {
+        $assetCurie = ImageAssetV1Mixin::findOne()->getCurie();
         $curie = GalleryV1Mixin::findOne()->getCurie();
         return [
-            "{$curie->getVendor()}:{$curie->getPackage()}:event:*" => 'onEvent',
+            "{$curie->getVendor()}:{$curie->getPackage()}:event:*"                       => 'onEvent',
+            "{$assetCurie->getVendor()}:{$assetCurie->getPackage()}:event:asset-created" => 'onAssetCreated',
+            'triniti:dam:mixin:gallery-asset-reordered'                                  => 'onGalleryAssetReordered',
         ];
+    }
+
+    /**
+     * @param Message $event
+     * @param Pbjx    $pbjx
+     */
+    public function onAssetCreated(Message $event, Pbjx $pbjx): void
+    {
+        if ($event->isReplay()) {
+            return;
+        }
+
+        /** @var Node $node */
+        $node = $event->get('node');
+        if (!$node instanceof ImageAsset || !$node->has('gallery_ref')) {
+            return;
+        }
+
+        $this->updateImageCount($event, $node->get('gallery_ref'), $pbjx);
+    }
+
+    /**
+     * @param Message $event
+     * @param Pbjx    $pbjx
+     */
+    public function onGalleryAssetReordered(Message $event, Pbjx $pbjx): void
+    {
+        if ($event->isReplay() || !$event->has('gallery_ref')) {
+            return;
+        }
+
+        $this->updateImageCount($event, $event->get('gallery_ref'), $pbjx);
     }
 
     /**
@@ -122,5 +164,47 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
     public function onGalleryUpdated(NodeUpdated $event, Pbjx $pbjx): void
     {
         $this->handleNodeUpdated($event, $pbjx);
+    }
+
+    /**
+     * @param Message $event
+     * @param NodeRef $galleryRef
+     * @param Pbjx    $pbjx
+     */
+    protected function updateImageCount(Message $event, NodeRef $galleryRef, Pbjx $pbjx): void
+    {
+        $node = $this->ncr->getNode($galleryRef, true, $this->createNcrContext($event));
+        $oldCount = $node->get('image_count');
+        $newCount = $this->getImageCount($event, $galleryRef, $pbjx);
+
+        if ($oldCount === $newCount) {
+            return;
+        }
+
+        $node->set('image_count', $newCount);
+        $this->updateAndIndexNode($node, $event, $pbjx);
+    }
+
+    /**
+     * @param Message $event
+     * @param NodeRef $galleryRef
+     * @param Pbjx    $pbjx
+     *
+     * @return int
+     */
+    protected function getImageCount(Message $event, NodeRef $galleryRef, Pbjx $pbjx): int
+    {
+        $request = SearchAssetsRequestV1Mixin::findOne()->createMessage();
+        $request
+            ->addToSet('types', ['image-asset'])
+            ->set('count', 1)
+            ->set('gallery_ref', $galleryRef)
+            ->set('status', NodeStatus::PUBLISHED());
+
+        try {
+            return (int)$pbjx->copyContext($event, $request)->request($request)->get('total', 0);
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 }

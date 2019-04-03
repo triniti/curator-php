@@ -14,10 +14,50 @@ use Acme\Schemas\Curator\Event\GalleryScheduledV1;
 use Acme\Schemas\Curator\Event\GalleryUnpublishedV1;
 use Acme\Schemas\Curator\Event\GalleryUpdatedV1;
 use Acme\Schemas\Curator\Node\GalleryV1;
+use Acme\Schemas\Dam\Event\AssetCreatedV1;
+use Acme\Schemas\Dam\Event\GalleryAssetReorderedV1;
+use Acme\Schemas\Dam\Node\ImageAssetV1;
+use Acme\Schemas\Dam\Node\VideoAssetV1;
+use Acme\Schemas\Dam\Request\SearchAssetsRequestV1;
+use Acme\Schemas\Dam\Request\SearchAssetsResponseV1;
 use Gdbots\Ncr\NcrSearch;
+use Gdbots\Pbj\SchemaQName;
+use Gdbots\Pbjx\Pbjx;
+use Gdbots\Pbjx\RequestHandler;
+use Gdbots\QueryParser\ParsedQuery;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
+use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
+use Gdbots\Schemas\Ncr\Mixin\SearchNodesResponse\SearchNodesResponse;
 use Gdbots\Schemas\Ncr\NodeRef;
+use Gdbots\Schemas\Pbjx\Mixin\Request\Request;
+use Gdbots\Schemas\Pbjx\Mixin\Response\Response;
 use Triniti\Curator\NcrGalleryProjector;
+use Triniti\Schemas\Dam\AssetId;
+
+class SearchAssetsRequestHandler implements RequestHandler
+{
+    /** @var NcrSearch */
+    protected $ncrSearch;
+
+    /**
+     * @param NcrSearch $ncrSearch
+     */
+    public function __construct(NcrSearch $ncrSearch)
+    {
+        $this->ncrSearch = $ncrSearch;
+    }
+
+    public function handleRequest(Request $request, Pbjx $pbjx): Response
+    {
+        $response = SearchAssetsResponseV1::create();
+        $this->ncrSearch->searchNodes($request, new ParsedQuery(), $response);
+        return $response;
+    }
+
+    public static function handlesCuries(): array
+    {
+    }
+}
 
 final class NcrGalleryProjectorTest extends AbstractPbjxTest
 {
@@ -32,6 +72,181 @@ final class NcrGalleryProjectorTest extends AbstractPbjxTest
         parent::setup();
         $this->ncrSearch = $this->getMockBuilder(MockNcrSearch::class)->getMock();
         $this->projector = new NcrGalleryProjector($this->ncr, $this->ncrSearch);
+
+        $this->locator->registerRequestHandler(
+            SearchAssetsRequestV1::schema()->getCurie(),
+            new SearchAssetsRequestHandler($this->ncrSearch)
+        );
+    }
+
+    public function testGetImageCount(): void
+    {
+        // fixme: don't make projector methods public that don't need to be.
+        $this->markTestSkipped();
+
+        $ncrSearch = new class implements NcrSearch
+        {
+            /** @var int $total */
+            public $total;
+
+            public function searchNodes(
+                SearchNodesRequest $request,
+                ParsedQuery $parsedQuery,
+                SearchNodesResponse $response,
+                array $qnames = [],
+                array $context = []
+            ): void {
+                if ($this->total) {
+                    $response->set('total', $this->total);
+                }
+            }
+
+            public function createStorage(SchemaQName $qname, array $context = []): void
+            {
+            }
+
+            public function describeStorage(SchemaQName $qname, array $context = []): string
+            {
+                return '';
+            }
+
+            public function indexNodes(array $nodes, array $context = []): void
+            {
+            }
+
+            public function deleteNodes(array $nodeRefs, array $context = []): void
+            {
+            }
+        };
+
+        $this->locator->registerRequestHandler(
+            SearchAssetsRequestV1::schema()->getCurie(),
+            new SearchAssetsRequestHandler($ncrSearch)
+        );
+
+        $gallery1 = GalleryV1::create();
+        $galleryRef1 = NodeRef::fromNode($gallery1);
+        $this->ncr->putNode($gallery1);
+
+        $gallery2 = GalleryV1::create();
+        $galleryRef2 = NodeRef::fromNode($gallery2);
+        $this->ncr->putNode($gallery2);
+
+        $this->ncr->putNode(VideoAssetV1::fromArray([
+            '_id'       => AssetId::create('video', 'mp4'),
+            'mime_type' => 'video/mp4',
+            'status'    => NodeStatus::PUBLISHED(),
+        ]));
+
+        $this->ncr->putNode(ImageAssetV1::fromArray([
+            '_id'       => AssetId::create('image', 'jpg'),
+            'mime_type' => 'image/jpeg',
+            'status'    => NodeStatus::PUBLISHED(),
+        ]));
+
+        $this->ncr->putNode(ImageAssetV1::fromArray([
+            '_id'         => AssetId::create('image', 'jpg'),
+            'gallery_ref' => $galleryRef2,
+            'mime_type'   => 'image/jpeg',
+            'status'      => NodeStatus::PUBLISHED(),
+        ]));
+
+        for ($i = 0; $i < 3; $i++) {
+            $this->ncr->putNode(ImageAssetV1::fromArray([
+                '_id'         => AssetId::create('image', 'jpg'),
+                'mime_type'   => 'image/jpeg',
+                'gallery_ref' => $galleryRef1,
+                'status'      => NodeStatus::PUBLISHED(),
+            ]));
+        }
+
+        /*
+        $ncrSearch->total = 3;
+        $gallery1ImageCount = $this->projector->getImageCount(AssetCreatedV1::create(), $galleryRef1, $this->pbjx);
+        $this->assertEquals(3, $gallery1ImageCount, 'gallery 1 should have 3 assets');
+        $ncrSearch->total = 1;
+        $gallery2ImageCount = $this->projector->getImageCount(AssetCreatedV1::create(), $galleryRef2, $this->pbjx);
+        $this->assertEquals(1, $gallery2ImageCount, 'gallery 2 should have 1 assets');
+        */
+    }
+
+    public function testOnImageAssetCreatedIsReply(): void
+    {
+        $item = ImageAssetV1::create()
+            ->set('_id', AssetId::create('image', 'jpg'))
+            ->set('mime_type', 'image/jpeg');
+        $event = AssetCreatedV1::create()->set('node', $item);
+        $event->isReplay(true);
+
+        $this->ncrSearch->expects($this->never())->method('searchNodes');
+        $this->projector->onAssetCreated($event, $this->pbjx);
+    }
+
+    public function testOnNonImageAssetCreated()
+    {
+        $image = VideoAssetV1::fromArray([
+            '_id'       => AssetId::create('video', 'mp4'),
+            'mime_type' => 'video/mp4',
+            'status'    => NodeStatus::PUBLISHED(),
+        ]);
+
+        $event = AssetCreatedV1::create()->set('node', $image);
+        $this->ncrSearch->expects($this->never())->method('searchNodes');
+        $this->projector->onAssetCreated($event, $this->pbjx);
+    }
+
+    public function testOnAssetCreatedWithoutGalleryRef(): void
+    {
+        $image = ImageAssetV1::fromArray([
+            '_id'       => AssetId::create('image', 'jpg'),
+            'mime_type' => 'image/jpeg',
+            'status'    => NodeStatus::PUBLISHED(),
+        ]);
+
+        $event = AssetCreatedV1::create()->set('node', $image);
+        $this->ncrSearch->expects($this->never())->method('searchNodes');
+        $this->projector->onAssetCreated($event, $this->pbjx);
+    }
+
+    public function testOnImageAssetCreated(): void
+    {
+        $gallery = GalleryV1::create();
+        $galleryRef = NodeRef::fromNode($gallery);
+        $this->ncr->putNode($gallery);
+
+        $image = ImageAssetV1::fromArray([
+            '_id'         => AssetId::create('image', 'jpg'),
+            'mime_type'   => 'image/jpeg',
+            'gallery_ref' => $galleryRef,
+            'status'      => NodeStatus::PUBLISHED(),
+        ]);
+
+        $event = AssetCreatedV1::create()->set('node', $image);
+        $this->ncrSearch->expects($this->once())->method('searchNodes');
+        $this->projector->onAssetCreated($event, $this->pbjx);
+    }
+
+    public function testOnGalleryAssetReordered(): void
+    {
+        $gallery = GalleryV1::create();
+        $galleryRef = NodeRef::fromNode($gallery);
+
+        $image = ImageAssetV1::fromArray([
+            '_id'         => AssetId::create('image', 'jpg'),
+            'mime_type'   => 'image/jpeg',
+            'gallery_ref' => $galleryRef,
+            'status'      => NodeStatus::PUBLISHED(),
+        ]);
+
+        $this->ncr->putNode($image);
+        $this->ncr->putNode($gallery);
+
+        $event = GalleryAssetReorderedV1::create()
+            ->set('node_ref', NodeRef::fromNode($image))
+            ->set('gallery_ref', $galleryRef);
+
+        $this->ncrSearch->expects($this->exactly(1))->method('searchNodes');
+        $this->projector->onGalleryAssetReordered($event, $this->pbjx);
     }
 
     public function testOnGalleryCreated(): void
@@ -98,6 +313,7 @@ final class NcrGalleryProjectorTest extends AbstractPbjxTest
             ->set('node_ref', $nodeRef);
 
         $event->isReplay(true);
+        $this->ncrSearch->expects($this->never())->method('indexNodes');
         $this->ncrSearch->expects($this->never())->method('indexNodes');
         $this->projector->onGalleryUpdated($event, $this->pbjx);
         $actualItem = $this->ncr->getNode($nodeRef);
