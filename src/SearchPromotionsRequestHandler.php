@@ -48,9 +48,9 @@ class SearchPromotionsRequestHandler extends AbstractSearchNodesRequestHandler
         }
 
         if ($request->has('render_at')) {
-            /** @var \DateTime $renderAt */
+            /** @var \DateTime|\DateTimeImmutable $renderAt */
             $renderAt = $request->get('render_at');
-            $renderAt->setTimezone($this->timeZone);
+            $renderAt = $renderAt->setTimezone($this->timeZone);
 
             $sod = (float)((int)strtotime("{$renderAt->format('H:i:s')}UTC", 0));
             $dow = strtolower($renderAt->format('D'));

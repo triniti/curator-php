@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 0.x versions.
 
 
+## v0.1.6
+* In `SearchPromotionsRequestHandler` assume date is an immutable one.
+
+
 ## v0.1.5
 * Update gallery `image_count` when new image asset nodes are added.
 
