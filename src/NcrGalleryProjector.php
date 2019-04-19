@@ -21,6 +21,7 @@ use Gdbots\Schemas\Ncr\Mixin\NodeScheduled\NodeScheduled;
 use Gdbots\Schemas\Ncr\Mixin\NodeUnpublished\NodeUnpublished;
 use Gdbots\Schemas\Ncr\Mixin\NodeUpdated\NodeUpdated;
 use Gdbots\Schemas\Ncr\NodeRef;
+use Gdbots\Schemas\Pbjx\Mixin\Event\Event;
 use Triniti\Schemas\Curator\Mixin\Gallery\GalleryV1Mixin;
 use Triniti\Schemas\Dam\Mixin\ImageAsset\ImageAsset;
 use Triniti\Schemas\Dam\Mixin\ImageAsset\ImageAssetV1Mixin;
@@ -37,10 +38,14 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
     {
         $assetCurie = ImageAssetV1Mixin::findOne()->getCurie();
         $curie = GalleryV1Mixin::findOne()->getCurie();
+
+        $damVendor = $assetCurie->getVendor();
+        $damPackage = $assetCurie->getPackage();
+
         return [
-            "{$curie->getVendor()}:{$curie->getPackage()}:event:*"                       => 'onEvent',
-            "{$assetCurie->getVendor()}:{$assetCurie->getPackage()}:event:asset-created" => 'onAssetCreated',
-            'triniti:dam:mixin:gallery-asset-reordered'                                  => 'onGalleryAssetReordered',
+            "{$curie->getVendor()}:{$curie->getPackage()}:event:*"     => 'onEvent',
+            "{$damVendor}:{$damPackage}:event:asset-created"           => 'onAssetCreated',
+            "{$damVendor}:{$damPackage}:event:gallery-asset-reordered" => [['onGalleryAssetReordered', -5000]],
         ];
     }
 
@@ -164,6 +169,21 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
     public function onGalleryUpdated(NodeUpdated $event, Pbjx $pbjx): void
     {
         $this->handleNodeUpdated($event, $pbjx);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function updateAndIndexNode(Node $node, Event $event, Pbjx $pbjx): void
+    {
+        if ($event->isReplay() || $node->isFrozen() || !$event instanceof NodeUpdated) {
+            parent::updateAndIndexNode($node, $event, $pbjx);
+            return;
+        }
+
+        $nodeRef = $event->get('node_ref') ?: NodeRef::fromNode($node);
+        $node->set('image_count', $this->getImageCount($event, $nodeRef, $pbjx));
+        parent::updateAndIndexNode($node, $event, $pbjx);
     }
 
     /**

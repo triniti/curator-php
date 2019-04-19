@@ -2,6 +2,11 @@
 This changelog references the relevant changes done in 0.x versions.
 
 
+## v0.1.7
+* Update `NcrGalleryProjector::onGalleryAssetReordered` event listener priority. 
+* In `NcrGalleryProjector` update image count on node update events as well.
+
+
 ## v0.1.6
 * In `SearchPromotionsRequestHandler` assume date is an immutable one.
 
