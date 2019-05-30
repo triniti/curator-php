@@ -2,6 +2,11 @@
 This changelog references the relevant changes done in 0.x versions.
 
 
+## v0.1.8
+* Update `NcrGalleryProjector::onGalleryAssetReordered` to handle remove asset from gallery.
+* Update `NcrGalleryProjector::onAssetCreated` event listener priority.
+
+
 ## v0.1.7
 * Update `NcrGalleryProjector::onGalleryAssetReordered` event listener priority. 
 * In `NcrGalleryProjector` update image count on node update events as well.

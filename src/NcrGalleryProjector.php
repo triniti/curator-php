@@ -44,8 +44,8 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
 
         return [
             "{$curie->getVendor()}:{$curie->getPackage()}:event:*"     => 'onEvent',
-            "{$damVendor}:{$damPackage}:event:asset-created"           => 'onAssetCreated',
-            "{$damVendor}:{$damPackage}:event:gallery-asset-reordered" => [['onGalleryAssetReordered', -5000]],
+            "{$damVendor}:{$damPackage}:event:asset-created"           => ['onAssetCreated', -5000],
+            "{$damVendor}:{$damPackage}:event:gallery-asset-reordered" => ['onGalleryAssetReordered', -5000],
         ];
     }
 
@@ -74,11 +74,17 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
      */
     public function onGalleryAssetReordered(Message $event, Pbjx $pbjx): void
     {
-        if ($event->isReplay() || !$event->has('gallery_ref')) {
+        if ($event->isReplay()) {
             return;
         }
 
-        $this->updateImageCount($event, $event->get('gallery_ref'), $pbjx);
+        if ($event->has('gallery_ref')) {
+            $this->updateImageCount($event, $event->get('gallery_ref'), $pbjx);
+        }
+
+        if ($event->has('old_gallery_ref')) {
+            $this->updateImageCount($event, $event->get('old_gallery_ref'), $pbjx);
+        }
     }
 
     /**
