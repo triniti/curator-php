@@ -8,7 +8,6 @@ use Gdbots\Pbj\Message;
 use Gdbots\Pbjx\EventSubscriber;
 use Gdbots\Pbjx\EventSubscriberTrait;
 use Gdbots\Pbjx\Pbjx;
-use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Gdbots\Schemas\Ncr\Mixin\Node\Node;
 use Gdbots\Schemas\Ncr\Mixin\NodeCreated\NodeCreated;
 use Gdbots\Schemas\Ncr\Mixin\NodeDeleted\NodeDeleted;
@@ -21,11 +20,11 @@ use Gdbots\Schemas\Ncr\Mixin\NodeScheduled\NodeScheduled;
 use Gdbots\Schemas\Ncr\Mixin\NodeUnpublished\NodeUnpublished;
 use Gdbots\Schemas\Ncr\Mixin\NodeUpdated\NodeUpdated;
 use Gdbots\Schemas\Ncr\NodeRef;
-use Gdbots\Schemas\Pbjx\Mixin\Event\Event;
 use Triniti\Schemas\Curator\Mixin\Gallery\GalleryV1Mixin;
+use Triniti\Schemas\Curator\Mixin\GalleryImageCountUpdated\GalleryImageCountUpdated;
+use Triniti\Schemas\Curator\Mixin\UpdateGalleryImageCount\UpdateGalleryImageCountV1Mixin;
 use Triniti\Schemas\Dam\Mixin\ImageAsset\ImageAsset;
 use Triniti\Schemas\Dam\Mixin\ImageAsset\ImageAssetV1Mixin;
-use Triniti\Schemas\Dam\Mixin\SearchAssetsRequest\SearchAssetsRequestV1Mixin;
 
 class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscriber
 {
@@ -44,8 +43,8 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
 
         return [
             "{$curie->getVendor()}:{$curie->getPackage()}:event:*"     => 'onEvent',
-            "{$damVendor}:{$damPackage}:event:asset-created"           => ['onAssetCreated', -5000],
-            "{$damVendor}:{$damPackage}:event:gallery-asset-reordered" => ['onGalleryAssetReordered', -5000],
+            "{$damVendor}:{$damPackage}:event:asset-created"           => 'onAssetCreated',
+            "{$damVendor}:{$damPackage}:event:gallery-asset-reordered" => 'onGalleryAssetReordered',
         ];
     }
 
@@ -65,7 +64,7 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
             return;
         }
 
-        $this->updateImageCount($event, $node->get('gallery_ref'), $pbjx);
+        $this->updateGalleryImageCount($event, $node->get('gallery_ref'), $pbjx);
     }
 
     /**
@@ -79,11 +78,11 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
         }
 
         if ($event->has('gallery_ref')) {
-            $this->updateImageCount($event, $event->get('gallery_ref'), $pbjx);
+            $this->updateGalleryImageCount($event, $event->get('gallery_ref'), $pbjx);
         }
 
         if ($event->has('old_gallery_ref')) {
-            $this->updateImageCount($event, $event->get('old_gallery_ref'), $pbjx);
+            $this->updateGalleryImageCount($event, $event->get('old_gallery_ref'), $pbjx);
         }
     }
 
@@ -115,6 +114,17 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
     }
 
     /**
+     * @param GalleryImageCountUpdated $event
+     * @param Pbjx                     $pbjx
+     */
+    public function onGalleryImageCountUpdated(GalleryImageCountUpdated $event, Pbjx $pbjx): void
+    {
+        $node = $this->ncr->getNode($event->get('node_ref'), true, $this->createNcrContext($event));
+        $node->set('image_count', $event->get('image_count'));
+        $this->updateAndIndexNode($node, $event, $pbjx);
+    }
+
+    /**
      * @param NodeMarkedAsDraft $event
      * @param Pbjx              $pbjx
      */
@@ -139,6 +149,7 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
     public function onGalleryPublished(NodePublished $event, Pbjx $pbjx): void
     {
         $this->handleNodePublished($event, $pbjx);
+        $this->updateGalleryImageCount($event, $event->get('node_ref'), $pbjx);
     }
 
     /**
@@ -175,62 +186,34 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
     public function onGalleryUpdated(NodeUpdated $event, Pbjx $pbjx): void
     {
         $this->handleNodeUpdated($event, $pbjx);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function updateAndIndexNode(Node $node, Event $event, Pbjx $pbjx): void
-    {
-        if ($event->isReplay() || $node->isFrozen() || !$event instanceof NodeUpdated) {
-            parent::updateAndIndexNode($node, $event, $pbjx);
-            return;
-        }
-
-        $nodeRef = $event->get('node_ref') ?: NodeRef::fromNode($node);
-        $node->set('image_count', $this->getImageCount($event, $nodeRef, $pbjx));
-        parent::updateAndIndexNode($node, $event, $pbjx);
+        $this->updateGalleryImageCount($event, $event->get('node_ref'), $pbjx);
     }
 
     /**
      * @param Message $event
-     * @param NodeRef $galleryRef
+     * @param NodeRef $nodeRef
      * @param Pbjx    $pbjx
      */
-    protected function updateImageCount(Message $event, NodeRef $galleryRef, Pbjx $pbjx): void
+    protected function updateGalleryImageCount(Message $event, NodeRef $nodeRef, Pbjx $pbjx): void
     {
-        $node = $this->ncr->getNode($galleryRef, true, $this->createNcrContext($event));
-        $oldCount = $node->get('image_count');
-        $newCount = $this->getImageCount($event, $galleryRef, $pbjx);
-
-        if ($oldCount === $newCount) {
+        if ($event->isReplay()) {
             return;
         }
 
-        $node->set('image_count', $newCount);
-        $this->updateAndIndexNode($node, $event, $pbjx);
-    }
-
-    /**
-     * @param Message $event
-     * @param NodeRef $galleryRef
-     * @param Pbjx    $pbjx
-     *
-     * @return int
-     */
-    protected function getImageCount(Message $event, NodeRef $galleryRef, Pbjx $pbjx): int
-    {
-        $request = SearchAssetsRequestV1Mixin::findOne()->createMessage();
-        $request
-            ->addToSet('types', ['image-asset'])
-            ->set('count', 1)
-            ->set('gallery_ref', $galleryRef)
-            ->set('status', NodeStatus::PUBLISHED());
-
-        try {
-            return (int)$pbjx->copyContext($event, $request)->request($request)->get('total', 0);
-        } catch (\Throwable $e) {
-            return 0;
+        static $jobs = [];
+        if (isset($jobs[$nodeRef->toString()])) {
+            // it's possible to get a bunch of asset events in one batch but
+            // we only need to count the gallery images one time per request
+            return;
         }
+
+        $jobs[$nodeRef->toString()] = true;
+        $command = UpdateGalleryImageCountV1Mixin::findOne()->createMessage()->set('node_ref', $nodeRef);
+        $pbjx->copyContext($event, $command);
+        $command
+            ->set('ctx_correlator_ref', $event->generateMessageRef())
+            ->clear('ctx_app');
+
+        $pbjx->sendAt($command, strtotime('+300 seconds'), "{$nodeRef}.update-gallery-image-count");
     }
 }
