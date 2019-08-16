@@ -62,11 +62,15 @@ class RenderWidgetRequestHandler implements RequestHandler
 
         /** @var Message $context */
         $context = $request->get('context');
+
+        if ('json' === $context->get('format')) {
+            return $response->set('search_response', $searchResponse);
+        }
+
         $curie = $widget::schema()->getCurie();
         $widgetName = str_replace('-', '_', $curie->getMessage());
         $template = $this->findTemplate($context, $widgetName);
         $hasNodes = null !== $searchResponse ? $searchResponse->has('nodes') : false;
-
         try {
             $html = $this->twig->render($template, [
                 'pbj'             => $widget,
