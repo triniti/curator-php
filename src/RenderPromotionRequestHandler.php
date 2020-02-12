@@ -193,6 +193,8 @@ class RenderPromotionRequestHandler implements RequestHandler
                 ]
             );
         }
+
+        return null;
     }
 
     /**

@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.2.1
+* Add `null` return in `RenderPromotionRequestHandler::renderWidget`.
+
+
 ## v1.2.0
 * When `context` format is `json`, simply include `search_response` when creating `renderWidgetResponse` and skip html rendering.
 
