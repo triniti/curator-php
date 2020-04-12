@@ -15,6 +15,7 @@ use Acme\Schemas\Curator\Node\ArticleTeaserV1;
 use Gdbots\Ncr\NcrSearch;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Gdbots\Schemas\Ncr\NodeRef;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Triniti\Curator\NcrTeaserProjector;
 
 final class NcrTeaserProjectorTest extends AbstractPbjxTest
@@ -29,7 +30,7 @@ final class NcrTeaserProjectorTest extends AbstractPbjxTest
     {
         parent::setup();
         $this->ncrSearch = $this->getMockBuilder(MockNcrSearch::class)->getMock();
-        $this->projector = new NcrTeaserProjector($this->ncr, $this->ncrSearch);
+        $this->projector = new NcrTeaserProjector($this->ncr, $this->ncrSearch, new ArrayAdapter());
     }
 
     public function testOnTeaserCreated(): void

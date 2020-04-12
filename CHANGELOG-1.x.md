@@ -2,6 +2,11 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.3.0
+* Implement slotting on search teasers request handler.
+* Require php `>=7.4`.
+
+
 ## v1.2.1
 * Add `null` return in `RenderPromotionRequestHandler::renderWidget`.
 
