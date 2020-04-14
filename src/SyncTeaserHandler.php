@@ -11,6 +11,7 @@ use Gdbots\Pbj\SchemaCurie;
 use Gdbots\Pbjx\CommandHandler;
 use Gdbots\Pbjx\CommandHandlerTrait;
 use Gdbots\Pbjx\Pbjx;
+use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Gdbots\Schemas\Ncr\Mixin\Node\Node;
 use Gdbots\Schemas\Ncr\NodeRef;
 use Gdbots\Schemas\Pbjx\StreamId;
@@ -115,6 +116,17 @@ class SyncTeaserHandler implements CommandHandler
         }
 
         if (!$this->shouldAutoCreateTeaser($target)) {
+            return;
+        }
+
+        if (NodeStatus::PUBLISHED()->equals($target->get('status'))) {
+            /*
+             * for now we don't create teasers for already published targets
+             * simply because we are not yet handling the auto publishing
+             * of the teaser when that scenario occurs.
+             *
+             * todo: solve auto publishing on newly created teasers.
+             */
             return;
         }
 

@@ -191,7 +191,7 @@ class TeaserableWatcher implements EventSubscriber
             ->set('ctx_correlator_ref', $event->generateMessageRef())
             ->clear('ctx_app');
 
-        $pbjx->sendAt($command, strtotime('+120 seconds'), "{$targetRef}.sync-teasers");
+        $pbjx->sendAt($command, strtotime('+3 seconds'), "{$targetRef}.sync-teasers");
     }
 
     protected function isNodeRefSupported(NodeRef $targetRef): bool

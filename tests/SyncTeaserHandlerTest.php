@@ -105,8 +105,7 @@ final class SyncTeaserHandlerTest extends AbstractPbjxTest
     public function testHandleSyncByTargetRefWithoutTeasers(): void
     {
         $article = ArticleV1::create()
-            ->set('title', 'article title')
-            ->set('status', NodeStatus::create('published'));
+            ->set('title', 'article title');
         $this->ncr->putNode($article);
 
         $command = SyncTeaserV1::create()->set('target_ref', NodeRef::fromNode($article));
