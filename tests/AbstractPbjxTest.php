@@ -31,7 +31,7 @@ abstract class AbstractPbjxTest extends TestCase
     /**
      * Run the test
      */
-    protected function setup()
+    protected function setup(): void
     {
         $this->locator = new RegisteringServiceLocator();
         $this->pbjx = $this->locator->getPbjx();

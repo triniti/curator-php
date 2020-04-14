@@ -17,10 +17,10 @@ final class NcrWidgetProjectorTest extends AbstractPbjxTest
     /** @var NcrWidgetProjector */
     protected $projector;
 
-    /** @var NcrSearch|\PHPUnit_Framework_MockObject_MockObject */
+    /** @var NcrSearch|\PHPUnit\Framework\MockObject\MockObject */
     protected $ncrSearch;
 
-    public function setup()
+    public function setup(): void
     {
         parent::setup();
         $this->ncrSearch = $this->getMockBuilder(MockNcrSearch::class)->getMock();

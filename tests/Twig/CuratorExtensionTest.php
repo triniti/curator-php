@@ -19,7 +19,7 @@ final class CuratorExtensionTest extends AbstractPbjxTest
     /** @var Environment */
     private $twig;
 
-    public function setup()
+    public function setup(): void
     {
         parent::setup();
         $loader = new FilesystemLoader(__DIR__ . '/../Fixtures/templates/');

@@ -22,7 +22,7 @@ final class RenderWidgetRequestHandlerTest extends AbstractPbjxTest
     /** @var RenderWidgetRequestHandler */
     private $handler;
 
-    public function setup()
+    public function setup(): void
     {
         parent::setup();
 

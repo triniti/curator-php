@@ -8,7 +8,9 @@ use Acme\Schemas\Curator\Command\UpdateTeaserV1;
 use Acme\Schemas\Curator\Event\TeaserCreatedV1;
 use Acme\Schemas\Curator\Node\ArticleTeaserV1;
 use Acme\Schemas\Curator\Request\GetTeaserRequestV1;
+use Gdbots\Ncr\Exception\NodeAlreadyExists;
 use Gdbots\Ncr\Validator\UniqueNodeValidator;
+use Gdbots\Pbj\Exception\AssertionFailed;
 use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Curator\GetTeaserRequestHandler;
@@ -19,7 +21,7 @@ final class UniqueTeaserValidatorTest extends AbstractPbjxTest
     /**
      * Prepare the test.
      */
-    public function setup()
+    public function setup(): void
     {
         parent::setup();
         // prepare request handlers that this test case requires
@@ -42,11 +44,9 @@ final class UniqueTeaserValidatorTest extends AbstractPbjxTest
         $this->assertTrue(true);
     }
 
-    /**
-     * @expectedException \Gdbots\Ncr\Exception\NodeAlreadyExists
-     */
     public function testValidateCreateTeaserThatDoesExistById(): void
     {
+        $this->expectException(NodeAlreadyExists::class);
         $node = ArticleTeaserV1::create();
         $event = TeaserCreatedV1::create()->set('node', $node);
         $this->eventStore->putEvents(
@@ -59,11 +59,9 @@ final class UniqueTeaserValidatorTest extends AbstractPbjxTest
         $validator->validateCreateNode($pbjxEvent);
     }
 
-    /**
-     * @expectedException \Gdbots\Pbj\Exception\AssertionFailed
-     */
     public function testValidateUpdateTeaserFailsWithoutANewNode(): void
     {
+        $this->expectException(AssertionFailed::class);
         $command = UpdateTeaserV1::create()->set('old_node', CreateTeaserV1::create());
         $pbjxEvent = new PbjxEvent($command);
         $validator = new UniqueNodeValidator();

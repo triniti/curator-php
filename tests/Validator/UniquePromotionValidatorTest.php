@@ -8,7 +8,9 @@ use Acme\Schemas\Curator\Command\UpdatePromotionV1;
 use Acme\Schemas\Curator\Event\PromotionCreatedV1;
 use Acme\Schemas\Curator\Node\PromotionV1;
 use Acme\Schemas\Curator\Request\GetPromotionRequestV1;
+use Gdbots\Ncr\Exception\NodeAlreadyExists;
 use Gdbots\Ncr\Validator\UniqueNodeValidator;
+use Gdbots\Pbj\Exception\AssertionFailed;
 use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Curator\GetPromotionRequestHandler;
@@ -19,7 +21,7 @@ final class UniquePromotionValidatorTest extends AbstractPbjxTest
     /**
      * Prepare the test.
      */
-    public function setup()
+    public function setup(): void
     {
         parent::setup();
         // prepare request handlers that this test case requires
@@ -42,11 +44,9 @@ final class UniquePromotionValidatorTest extends AbstractPbjxTest
         $this->assertTrue(true);
     }
 
-    /**
-     * @expectedException \Gdbots\Ncr\Exception\NodeAlreadyExists
-     */
     public function testValidateCreatePromotionThatDoesExistById(): void
     {
+        $this->expectException(NodeAlreadyExists::class);
         $node = PromotionV1::create();
         $event = PromotionCreatedV1::create()->set('node', $node);
         $this->eventStore->putEvents(
@@ -59,11 +59,9 @@ final class UniquePromotionValidatorTest extends AbstractPbjxTest
         $validator->validateCreateNode($pbjxEvent);
     }
 
-    /**
-     * @expectedException \Gdbots\Pbj\Exception\AssertionFailed
-     */
     public function testValidateUpdatePromotionFailsWithoutANewNode(): void
     {
+        $this->expectException(AssertionFailed::class);
         $command = UpdatePromotionV1::create()->set('old_node', PromotionV1::create());
         $pbjxEvent = new PbjxEvent($command);
         $validator = new UniqueNodeValidator();

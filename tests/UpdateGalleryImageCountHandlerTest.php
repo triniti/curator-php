@@ -14,7 +14,7 @@ use Triniti\Schemas\Dam\Mixin\SearchAssetsRequest\SearchAssetsRequestV1Mixin;
 
 final class UpdateGalleryImageCountHandlerTest extends AbstractPbjxTest
 {
-    public function setup()
+    public function setup(): void
     {
         parent::setup();
 

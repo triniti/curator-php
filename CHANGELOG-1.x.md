@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.0
+* Auto-generate and sync teasers for teaserable content.
+
+
 ## v1.3.0
 * Implement slotting on search teasers request handler.
 * Require php `>=7.4`.
