@@ -113,6 +113,11 @@ class TeaserTransformer
         $teaser->set('description', $description);
     }
 
+    protected static function transformExpirable(Message $target, Message $teaser): void
+    {
+        static::transformSingleField($target, $teaser, 'expires_at');
+    }
+
     protected static function transformGallery(Message $target, Message $teaser): void
     {
         static::transformSingleField($target, $teaser, 'credit');

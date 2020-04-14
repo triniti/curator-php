@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.2
+* Transform for `expirable` mixin in TeaserTransformer.
+
+
 ## v1.4.1
 * Adjust timing of teaser sync (doesn't need to be delayed so long).
 * Do not auto create teaser if the target is already published (we'll handle this scenario at a late date).

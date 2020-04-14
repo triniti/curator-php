@@ -13,6 +13,7 @@ class TeaserTransformerTest extends TestCase
 {
     private $simpleFieldNames = [
         'ads_enabled',
+        'expires_at',
         'is_unlisted',
         'meta_description',
         'seo_title',
@@ -30,28 +31,28 @@ class TeaserTransformerTest extends TestCase
 
     public function testTransform() {
         $teaser = ArticleTeaserV1::create()
+            ->set('ads_enabled', false)
+            ->set('description', 'whatever')
+            ->set('expires_at', \DateTime::createFromFormat('j-M-Y', '17-Jan-2029'))
+            ->set('is_unlisted', false)
             ->set('meta_description', 'whatever')
+            ->set('order_date', \DateTime::createFromFormat('j-M-Y', '15-Feb-2009'))
             ->set('seo_title', 'whatever')
             ->set('swipe', 'whatever')
             ->set('theme', 'whatever')
-            ->set('title', 'whatever')
-            ->set('ads_enabled', false)
-            ->set('is_unlisted', false)
-            ->set('order_date', \DateTime::createFromFormat('j-M-Y', '15-Feb-2009'));
-
-        $teaser->set('description', 'whatever');
+            ->set('title', 'whatever');
 
         $target = ArticleV1::create()
+            ->addToList('blocks', [TextBlockV1::create()->set('text', 'equally-whatever')])
+            ->set('ads_enabled', true)
+            ->set('expires_at', \DateTime::createFromFormat('j-M-Y', '13-Mar-2129'))
+            ->set('is_unlisted', true)
             ->set('meta_description', 'equally-whatever')
+            ->set('order_date', \DateTime::createFromFormat('j-M-Y', '15-Feb-2010'))
             ->set('seo_title', 'equally-whatever')
             ->set('swipe', 'equally-whatever')
             ->set('theme', 'equally-whatever')
-            ->set('title', 'equally-whatever')
-            ->set('ads_enabled', true)
-            ->set('is_unlisted', true)
-            ->set('order_date', \DateTime::createFromFormat('j-M-Y', '15-Feb-2010'));
-
-        $target->addToList('blocks', [TextBlockV1::create()->set('text', 'equally-whatever')]);
+            ->set('title', 'equally-whatever');
 
         foreach ($this->simpleFieldNames as $fieldName) {
             $this->assertNotSame($teaser->get($fieldName), $target->get($fieldName));
