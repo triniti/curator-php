@@ -2,6 +2,11 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.3
+* Do not, by default, autocreate teasers for assets.
+* Transform asset teaser fields in TeaserTransformer.
+
+
 ## v1.4.2
 * Transform for `expirable` mixin in TeaserTransformer.
 

@@ -92,6 +92,13 @@ class TeaserTransformer
         static::transformMapField($target, $teaser, 'dfp_cust_params');
     }
 
+    protected static function transformAsset(Message $target, Message $teaser): void
+    {
+        static::transformSingleField($target, $teaser, 'credit');
+        static::transformSingleField($target, $teaser, 'credit_url');
+        static::transformSingleField($target, $teaser, 'cta_text');
+    }
+
     protected static function transformCategorizable(Message $target, Message $teaser): void
     {
         static::transformSetField($target, $teaser, 'category_refs');
@@ -141,9 +148,18 @@ class TeaserTransformer
         static::transformSetField($target, $teaser, 'primary_person_refs');
     }
 
+    protected static function transformImageAsset(Message $target, Message $teaser): void
+    {
+        if ($teaser->has('image_ref')) {
+            return;
+        }
+
+        $teaser->set('image_ref', NodeRef::fromNode($target));
+    }
+
     protected static function transformNode(Message $target, Message $teaser): void
     {
-        static::transformSingleField($target, $teaser, 'title');
+        $teaser->set('title', $target->get('display_title', $target->get('title', $teaser->get('title'))));
     }
 
     protected static function transformSeo(Message $target, Message $teaser): void
@@ -180,11 +196,6 @@ class TeaserTransformer
     protected static function transformThemeable(Message $target, Message $teaser): void
     {
         static::transformSingleField($target, $teaser, 'theme');
-    }
-
-    protected static function transformTimeline(Message $target, Message $teaser): void
-    {
-        $teaser->set('title', $target->get('display_title', $teaser->get('title')));
     }
 
     protected static function transformVideo(Message $target, Message $teaser): void

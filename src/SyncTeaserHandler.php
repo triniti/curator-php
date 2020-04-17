@@ -18,6 +18,7 @@ use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Schemas\Curator\Mixin\SyncTeaser\SyncTeaser;
 use Triniti\Schemas\Curator\Mixin\Teaser\TeaserV1Mixin;
 use Triniti\Schemas\Curator\Mixin\TeaserHasTarget\TeaserHasTarget;
+use Triniti\Schemas\Dam\Mixin\Asset\Asset;
 use Triniti\Sys\Flags;
 
 class SyncTeaserHandler implements CommandHandler
@@ -213,6 +214,12 @@ class SyncTeaserHandler implements CommandHandler
 
     protected function shouldAutoCreateTeaser(Message $target): bool
     {
+        if ($target instanceof Asset) {
+            // lots of assets get created but usually teasers are not desired for these
+            // especially image-assets in galleries.
+            return false;
+        }
+
         return true;
     }
 }
