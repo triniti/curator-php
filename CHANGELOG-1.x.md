@@ -2,6 +2,11 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.4
+* In `SyncTeaserHandler::shouldAutoCreateTeaser` just auto create for article, gallery and video by default.
+* In `NcrGalleryProjector` also update image counts when assets are deleted or expired.
+
+
 ## v1.4.3
 * Do not, by default, autocreate teasers for assets.
 * Transform asset teaser fields in TeaserTransformer.

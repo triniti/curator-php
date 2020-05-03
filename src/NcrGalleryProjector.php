@@ -44,6 +44,8 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
         return [
             "{$curie->getVendor()}:{$curie->getPackage()}:event:*"     => 'onEvent',
             "{$damVendor}:{$damPackage}:event:asset-created"           => 'onAssetCreated',
+            "{$damVendor}:{$damPackage}:event:asset-deleted"           => 'onAssetDeletedOrExpired',
+            "{$damVendor}:{$damPackage}:event:asset-expired"           => 'onAssetDeletedOrExpired',
             "{$damVendor}:{$damPackage}:event:gallery-asset-reordered" => 'onGalleryAssetReordered',
         ];
     }
@@ -60,6 +62,29 @@ class NcrGalleryProjector extends AbstractNodeProjector implements EventSubscrib
 
         /** @var Node $node */
         $node = $event->get('node');
+        if (!$node instanceof ImageAsset || !$node->has('gallery_ref')) {
+            return;
+        }
+
+        $this->updateGalleryImageCount($event, $node->get('gallery_ref'), $pbjx);
+    }
+
+    /**
+     * @param Message $event
+     * @param Pbjx    $pbjx
+     */
+    public function onAssetDeletedOrExpired(Message $event, Pbjx $pbjx): void
+    {
+        if ($event->isReplay()) {
+            return;
+        }
+
+        try {
+            $node = $this->ncr->getNode($event->get('node_ref'), false, $this->createNcrContext($event));
+        } catch (\Throwable $e) {
+            return;
+        }
+
         if (!$node instanceof ImageAsset || !$node->has('gallery_ref')) {
             return;
         }
