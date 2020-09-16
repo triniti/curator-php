@@ -7,13 +7,17 @@
     {
       "type": "vcs",
       "url": "https://github.com/triniti/sys-php"
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/triniti/schemas"
     }
   ],
   "require": {
     "php": ">=7.4",
     "gdbots/ncr": "^2.0",
     "symfony/http-foundation": "^4.2",
-    "triniti/schemas": "^1.0",
+    "triniti/schemas": "dev-sy5",
     "triniti/sys": "dev-sy5",
     "twig/twig": "^3.0"
   },
