@@ -3,12 +3,18 @@
   "description": "Php library that provides implementations for triniti:curator schemas.",
   "type": "library",
   "license": "Apache-2.0",
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/triniti/sys-php"
+    }
+  ],
   "require": {
     "php": ">=7.4",
     "gdbots/ncr": "^2.0",
     "symfony/http-foundation": "^4.2",
     "triniti/schemas": "^1.0",
-    "triniti/sys": "^1.0",
+    "triniti/sys": "dev-sy5",
     "twig/twig": "^3.0"
   },
   "require-dev": {
