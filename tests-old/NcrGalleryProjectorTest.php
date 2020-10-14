@@ -56,7 +56,7 @@ class SearchAssetsRequestHandler implements RequestHandler
     }
 }
 
-final class NcrGalleryProjectorTest extends AbstractPbjxTest
+final class NcrGalleryProjectorTestOld extends AbstractPbjxTest
 {
     /** @var NcrGalleryProjector */
     protected $projector;

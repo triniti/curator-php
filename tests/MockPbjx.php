@@ -8,12 +8,8 @@ use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Pbjx\EventSearch\EventSearch;
 use Gdbots\Pbjx\EventStore\EventStore;
 use Gdbots\Pbjx\Pbjx;
-use Gdbots\Schemas\Pbjx\Mixin\Command\Command;
-use Gdbots\Schemas\Pbjx\Mixin\Event\Event;
-use Gdbots\Schemas\Pbjx\Mixin\Request\Request;
-use Gdbots\Schemas\Pbjx\Mixin\Response\Response;
 
-class MockPbjxOld implements Pbjx
+class MockPbjx implements Pbjx
 {
     public function trigger(Message $message, string $suffix, ?PbjxEvent $event = null, bool $recursive = true): Pbjx
     {
@@ -27,23 +23,23 @@ class MockPbjxOld implements Pbjx
     {
     }
 
-    public function send(Command $command): void
+    public function send(Message $command): void
     {
     }
 
-    public function sendAt(Command $command, int $timestamp, ?string $jobId = null): string
+    public function sendAt(Message $command, int $timestamp, ?string $jobId = null, array $context = []): string
     {
     }
 
-    public function cancelJobs(array $jobIds): void
+    public function cancelJobs(array $jobIds, array $context = []): void
     {
     }
 
-    public function publish(Event $event): void
+    public function publish(Message $event): void
     {
     }
 
-    public function request(Request $request): Response
+    public function request(Message $request): Message
     {
     }
 

@@ -11,7 +11,7 @@ use Gdbots\Pbjx\Scheduler\Scheduler;
 use Gdbots\Schemas\Pbjx\Mixin\Command\Command;
 use PHPUnit\Framework\TestCase;
 
-abstract class AbstractPbjxTest extends TestCase
+abstract class AbstractPbjxTestOld extends TestCase
 {
     /** @var RegisteringServiceLocator */
     protected $locator;

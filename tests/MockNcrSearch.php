@@ -4,12 +4,11 @@ declare(strict_types=1);
 namespace Triniti\Tests\Curator;
 
 use Gdbots\Ncr\NcrSearch;
+use Gdbots\Pbj\Message;
 use Gdbots\Pbj\SchemaQName;
 use Gdbots\QueryParser\ParsedQuery;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesResponse\SearchNodesResponse;
 
-class MockNcrSearchOld implements NcrSearch
+class MockNcrSearch implements NcrSearch
 {
     public function createStorage(SchemaQName $qname, array $context = []): void
     {
@@ -31,11 +30,7 @@ class MockNcrSearchOld implements NcrSearch
         // do nothing
     }
 
-    public function searchNodes(SearchNodesRequest $request,
-                                ParsedQuery $parsedQuery,
-                                SearchNodesResponse $response,
-                                array $qnames = [],
-                                array $context = []): void
+    public function searchNodes(Message $request, ParsedQuery $parsedQuery, Message $response, array $qnames = [], array $context = []): void
     {
         // do nothing
     }
