@@ -4,23 +4,47 @@ declare(strict_types=1);
 namespace Triniti\Tests\Curator;
 
 use Gdbots\Pbj\Message;
+use Gdbots\Pbj\Util\NumberUtil;
 use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Pbjx\EventSearch\EventSearch;
 use Gdbots\Pbjx\EventStore\EventStore;
 use Gdbots\Pbjx\Pbjx;
+use Gdbots\Pbjx\ServiceLocator;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class MockPbjx implements Pbjx
 {
+    private EventDispatcherInterface $dispatcher;
+    private ServiceLocator $locator;
+    private int $maxRecursion;
+    private array $sent = [];
+
+    public function __construct(ServiceLocator $locator, int $maxRecursion = 10)
+    {
+        $this->locator = $locator;
+        $this->dispatcher = $this->locator->getDispatcher();
+        $this->maxRecursion = NumberUtil::bound($maxRecursion, 2, 10);
+        PbjxEvent::setPbjx($this);
+    }
+
+    public function getSent(): array
+    {
+        return $this->sent;
+    }
+
     public function trigger(Message $message, string $suffix, ?PbjxEvent $event = null, bool $recursive = true): Pbjx
     {
+        return $this;
     }
 
     public function triggerLifecycle(Message $message, bool $recursive = true): Pbjx
     {
+        return $this;
     }
 
     public function copyContext(Message $from, Message $to): Pbjx
     {
+        return $this;
     }
 
     public function send(Message $command): void
@@ -29,6 +53,8 @@ class MockPbjx implements Pbjx
 
     public function sendAt(Message $command, int $timestamp, ?string $jobId = null, array $context = []): string
     {
+        $this->sent[] = $command;
+        return $jobId ?: 'jobid';
     }
 
     public function cancelJobs(array $jobIds, array $context = []): void
@@ -45,6 +71,7 @@ class MockPbjx implements Pbjx
 
     public function getEventStore(): EventStore
     {
+        return $this->locator->getEventStore();
     }
 
     public function getEventSearch(): EventSearch

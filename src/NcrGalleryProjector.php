@@ -46,10 +46,6 @@ class NcrGalleryProjector extends NcrProjector
 //        ];
 //    }
 
-    /**
-     * @param Message $event
-     * @param Pbjx    $pbjx
-     */
     public function onAssetCreated(Message $event, Pbjx $pbjx): void
     {
         if ($event->isReplay()) {
@@ -61,7 +57,29 @@ class NcrGalleryProjector extends NcrProjector
         if (!$node::schema()->hasMixin('triniti:dam:mixin:image-asset') || !$node->has('gallery_ref')) {
             return;
         }
+
         $this->updateGalleryImageCount($event, $node->get('gallery_ref'), $pbjx);
+    }
+
+    public function onGalleryUpdated(Message $event, Pbjx $pbjx): void
+    {
+        $this->onNodeUpdated($event, $pbjx);
+        $this->updateGalleryImageCount($event, $event->get('node_ref'), $pbjx);
+    }
+
+    public function onGalleryAssetReordered(Message $event, Pbjx $pbjx): void
+    {
+        if ($event->isReplay()) {
+            return;
+        }
+
+        if ($event->has('gallery_ref')) {
+            $this->updateGalleryImageCount($event, $event->get('gallery_ref'), $pbjx);
+        }
+
+        if ($event->has('old_gallery_ref')) {
+            $this->updateGalleryImageCount($event, $event->get('old_gallery_ref'), $pbjx);
+        }
     }
 
     protected function updateGalleryImageCount(Message $event, NodeRef $nodeRef, Pbjx $pbjx): void
