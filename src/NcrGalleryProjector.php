@@ -7,22 +7,21 @@ use Gdbots\Ncr\NcrProjector;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
 use Gdbots\Pbj\WellKnown\NodeRef;
-use Gdbots\Pbjx\EventSubscriberTrait;
 use Gdbots\Pbjx\Pbjx;
 use Triniti\Schemas\Curator\Command\UpdateGalleryImageCountV1;
 
 class NcrGalleryProjector extends NcrProjector
 {
-    use EventSubscriberTrait;
-
     public static function getSubscribedEvents()
     {
         $vendor = MessageResolver::getDefaultVendor();
         return [
-            "{$vendor}:dam:event:asset-created"         => 'onAssetCreated',
-            "{$vendor}:dam:event:asset-deleted"         => 'onAssetDeletedOrExpired',
-            "{$vendor}:dam:event:asset-expired"         => 'onAssetDeletedOrExpired',
-            'triniti:dam:event:gallery-asset-reordered' => 'onGalleryAssetReordered',
+            "{$vendor}:curator:event:gallery-image-count-updated" => 'onGalleryImageCountUpdated', // deprecated
+            "{$vendor}:dam:event:asset-created"                   => 'onAssetCreated',
+            "{$vendor}:dam:event:asset-deleted"                   => 'onAssetDeletedOrExpired',
+            "{$vendor}:dam:event:asset-expired"                   => 'onAssetDeletedOrExpired',
+            'triniti:curator:event:gallery-image-count-updated'   => 'onGalleryImageCountUpdated',
+            'triniti:dam:event:gallery-asset-reordered'           => 'onGalleryAssetReordered',
         ];
     }
 
