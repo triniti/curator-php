@@ -26,26 +26,6 @@ class NcrGalleryProjector extends NcrProjector
         ];
     }
 
-//    /**
-//     * {@inheritdoc}
-//     */
-//    public static function getSubscribedEvents()
-//    {
-//        $assetCurie = ImageAssetV1Mixin::findOne()->getCurie();
-//        $curie = GalleryV1Mixin::findOne()->getCurie();
-//
-//        $damVendor = $assetCurie->getVendor();
-//        $damPackage = $assetCurie->getPackage();
-//
-//        return [
-//            "{$curie->getVendor()}:{$curie->getPackage()}:event:*"     => 'onEvent',
-//            "{$damVendor}:{$damPackage}:event:asset-created"           => 'onAssetCreated',
-//            "{$damVendor}:{$damPackage}:event:asset-deleted"           => 'onAssetDeletedOrExpired',
-//            "{$damVendor}:{$damPackage}:event:asset-expired"           => 'onAssetDeletedOrExpired',
-//            "{$damVendor}:{$damPackage}:event:gallery-asset-reordered" => 'onGalleryAssetReordered',
-//        ];
-//    }
-
     public function onAssetCreated(Message $event, Pbjx $pbjx): void
     {
         if ($event->isReplay()) {
@@ -82,74 +62,24 @@ class NcrGalleryProjector extends NcrProjector
         }
     }
 
-//    /**
-//     * @param Message $event
-//     * @param Pbjx    $pbjx
-//     */
-//    public function onAssetDeletedOrExpired(Message $event, Pbjx $pbjx): void
-//    {
-//        if ($event->isReplay()) {
-//            return;
-//        }
-//
-//        try {
-//            $node = $this->ncr->getNode($event->get('node_ref'), false, $this->createNcrContext($event));
-//        } catch (\Throwable $e) {
-//            return;
-//        }
-//
-//        if (!$node instanceof ImageAsset || !$node->has('gallery_ref')) {
-//            return;
-//        }
-//
-//        $this->updateGalleryImageCount($event, $node->get('gallery_ref'), $pbjx);
-//    }
-//
-//    /**
-//     * @param Message $event
-//     * @param Pbjx    $pbjx
-//     */
-//    public function onGalleryAssetReordered(Message $event, Pbjx $pbjx): void
-//    {
-//        if ($event->isReplay()) {
-//            return;
-//        }
-//
-//        if ($event->has('gallery_ref')) {
-//            $this->updateGalleryImageCount($event, $event->get('gallery_ref'), $pbjx);
-//        }
-//
-//        if ($event->has('old_gallery_ref')) {
-//            $this->updateGalleryImageCount($event, $event->get('old_gallery_ref'), $pbjx);
-//        }
-//    }
-//
-//    /**
-//     * @param NodeCreated $event
-//     * @param Pbjx        $pbjx
-//     */
-//    public function onGalleryCreated(NodeCreated $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeCreated($event, $pbjx);
-//    }
-//
-//    /**
-//     * @param NodeDeleted $event
-//     * @param Pbjx        $pbjx
-//     */
-//    public function onGalleryDeleted(NodeDeleted $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeDeleted($event, $pbjx);
-//    }
-//
-//    /**
-//     * @param NodeExpired $event
-//     * @param Pbjx        $pbjx
-//     */
-//    public function onGalleryExpired(NodeExpired $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeExpired($event, $pbjx);
-//    }
+    public function onAssetDeletedOrExpired(Message $event, Pbjx $pbjx): void
+    {
+        if ($event->isReplay()) {
+            return;
+        }
+
+        try {
+            $node = $this->ncr->getNode($event->get('node_ref'), false);
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        if (!$node::schema()->hasMixin('triniti:dam:mixin:image-asset') || !$node->has('gallery_ref')) {
+            return;
+        }
+
+        $this->updateGalleryImageCount($event, $node->get('gallery_ref'), $pbjx);
+    }
 
     public function onGalleryImageCountUpdated(Message $event, Pbjx $pbjx): void
     {

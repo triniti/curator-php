@@ -11,6 +11,7 @@ use Acme\Schemas\Curator\Node\GalleryV1;
 use Acme\Schemas\Curator\Request\SearchGalleriesRequestV1;
 use Acme\Schemas\Curator\Request\SearchGalleriesResponseV1;
 use Acme\Schemas\Dam\Event\AssetCreatedV1;
+use Acme\Schemas\Dam\Event\AssetDeletedV1;
 use Acme\Schemas\Dam\Event\GalleryAssetReorderedV1;
 use Acme\Schemas\Dam\Node\ImageAssetV1;
 use Acme\Schemas\Dam\Node\VideoAssetV1;
@@ -203,5 +204,87 @@ final class NcrGalleryProjectorTest extends AbstractPbjxTest
         $this->projector->onGalleryImageCountUpdated($event, $this->pbjx);
 
         $this->assertSame(20, $this->ncr->getNode($nodeRef)->get('image_count'));
+    }
+
+    public function testOnAssetDeletedOrExpired(): void
+    {
+        $node = GalleryV1::create();
+        $nodeRef = $node->generateNodeRef();
+        $image = ImageAssetV1::fromArray([
+            '_id'       => AssetId::create('image', 'jpg'),
+            'mime_type' => 'image/jpeg',
+            'status'    => NodeStatus::PUBLISHED(),
+            'gallery_ref' => $nodeRef,
+        ]);
+        $this->ncr->putNode($image);
+
+        $this->projector->onAssetDeletedOrExpired(AssetDeletedV1::create()->set('node_ref', $image->generateNodeRef()), $this->pbjx);
+
+        $sentCommand = $this->pbjx->getSent()[0];
+        $this->assertInstanceOf(UpdateGalleryImageCountV1::class, $sentCommand);
+        $this->assertTrue($nodeRef->equals($sentCommand->get('node_ref')));
+    }
+
+    public function testOnAssetDeletedOrExpiredIsReplay(): void
+    {
+        $node = GalleryV1::create();
+        $nodeRef = $node->generateNodeRef();
+        $image = ImageAssetV1::fromArray([
+            '_id'       => AssetId::create('image', 'jpg'),
+            'mime_type' => 'image/jpeg',
+            'status'    => NodeStatus::PUBLISHED(),
+            'gallery_ref' => $nodeRef,
+        ]);
+        $this->ncr->putNode($image);
+
+        $event = AssetDeletedV1::create()->set('node_ref', $image->generateNodeRef());
+        $event->isReplay(true);
+        $this->projector->onAssetDeletedOrExpired($event, $this->pbjx);
+
+        $this->assertEmpty($this->pbjx->getSent());
+    }
+
+    public function testOnAssetDeletedOrExpiredNoNode(): void
+    {
+        $node = GalleryV1::create();
+        $nodeRef = $node->generateNodeRef();
+        $image = ImageAssetV1::fromArray([
+            '_id'       => AssetId::create('image', 'jpg'),
+            'mime_type' => 'image/jpeg',
+            'status'    => NodeStatus::PUBLISHED(),
+            'gallery_ref' => $nodeRef,
+        ]);
+
+        $this->projector->onAssetDeletedOrExpired(AssetDeletedV1::create()->set('node_ref', $image->generateNodeRef()), $this->pbjx);
+        $this->assertEmpty($this->pbjx->getSent());
+    }
+
+    public function testOnAssetDeletedOrExpiredNoGalleryRef(): void
+    {
+        $image = ImageAssetV1::fromArray([
+            '_id'       => AssetId::create('image', 'jpg'),
+            'mime_type' => 'image/jpeg',
+            'status'    => NodeStatus::PUBLISHED(),
+        ]);
+        $this->ncr->putNode($image);
+
+        $this->projector->onAssetDeletedOrExpired(AssetDeletedV1::create()->set('node_ref', $image->generateNodeRef()), $this->pbjx);
+        $this->assertEmpty($this->pbjx->getSent());
+    }
+
+    public function testOnAssetDeletedOrExpiredWrongAssetType(): void
+    {
+        $node = GalleryV1::create();
+        $nodeRef = $node->generateNodeRef();
+        $image = VideoAssetV1::fromArray([
+            '_id'       => AssetId::create('video', 'mxf'),
+            'mime_type' => 'image/jpeg',
+            'status'    => NodeStatus::PUBLISHED(),
+            'gallery_ref' => $nodeRef,
+        ]);
+        $this->ncr->putNode($image);
+
+        $this->projector->onAssetDeletedOrExpired(AssetDeletedV1::create()->set('node_ref', $image->generateNodeRef()), $this->pbjx);
+        $this->assertEmpty($this->pbjx->getSent());
     }
 }
