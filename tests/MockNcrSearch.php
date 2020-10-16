@@ -41,6 +41,8 @@ class MockNcrSearch implements NcrSearch
 
     public function searchNodes(Message $request, ParsedQuery $parsedQuery, Message $response, array $qnames = [], array $context = []): void
     {
-        $response->addToList('nodes', $this->nodes);
+        $response
+            ->addToList('nodes', $this->nodes)
+            ->set('total', count($this->nodes));
     }
 }

@@ -173,18 +173,12 @@ class NcrGalleryProjector extends NcrProjector
 //    {
 //        $this->handleNodeExpired($event, $pbjx);
 //    }
-//
-//    /**
-//     * @param GalleryImageCountUpdated $event
-//     * @param Pbjx                     $pbjx
-//     */
-//    public function onGalleryImageCountUpdated(GalleryImageCountUpdated $event, Pbjx $pbjx): void
+
+//    public function onGalleryImageCountUpdated(Message $event, Pbjx $pbjx): void
 //    {
-//        $node = $this->ncr->getNode($event->get('node_ref'), true, $this->createNcrContext($event));
-//        $node->set('image_count', $event->get('image_count'));
-//        $this->updateAndIndexNode($node, $event, $pbjx);
+//        $this->onNodeEvent($event, $pbjx);
 //    }
-//
+
 //    /**
 //     * @param NodeMarkedAsDraft $event
 //     * @param Pbjx              $pbjx
@@ -202,17 +196,13 @@ class NcrGalleryProjector extends NcrProjector
 //    {
 //        $this->handleNodeMarkedAsPending($event, $pbjx);
 //    }
-//
-//    /**
-//     * @param NodePublished $event
-//     * @param Pbjx          $pbjx
-//     */
-//    public function onGalleryPublished(NodePublished $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodePublished($event, $pbjx);
-//        $this->updateGalleryImageCount($event, $event->get('node_ref'), $pbjx);
-//    }
-//
+
+    public function onGalleryPublished(Message $event, Pbjx $pbjx): void
+    {
+        $this->onNodeEvent($event, $pbjx);
+        $this->updateGalleryImageCount($event, $event->get('node_ref'), $pbjx);
+    }
+
 //    /**
 //     * @param NodeRenamed $event
 //     * @param Pbjx        $pbjx

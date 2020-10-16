@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Triniti\Tests\Curator;
 
 use Acme\Schemas\Curator\Command\CreateGalleryV1;
+use Acme\Schemas\Curator\Command\PublishGalleryV1;
 use Acme\Schemas\Curator\Command\UpdateGalleryV1;
 use Acme\Schemas\Curator\Node\GalleryV1;
 use Acme\Schemas\Curator\Request\SearchGalleriesRequestV1;
@@ -161,5 +162,32 @@ final class NcrGalleryProjectorTest extends AbstractPbjxTest
         $this->assertSame('new-title', $response->get('nodes', [])[0]->get('title'));
 
         $this->assertEmpty($this->pbjx->getSent());
+    }
+
+    public function testOnGalleryPublished(): void
+    {
+        $node = GalleryV1::create();
+        $this->ncr->putNode($node);
+        $nodeRef = $node->generateNodeRef();
+        $aggregate = GalleryAggregate::fromNode($node, $this->pbjx);
+        $aggregate->createNode(CreateGalleryV1::create()->set('node', $node));
+        $aggregate->commit();
+
+        $aggregate->publishNode(PublishGalleryV1::create()->set('node_ref', $nodeRef));
+        $events = $aggregate->getUncommittedEvents();
+        $aggregate->commit();
+        $this->projector->onGalleryPublished($events[0], $this->pbjx);
+        $ncrNode = $this->ncr->getNode($nodeRef);
+        $this->assertTrue(NodeStatus::PUBLISHED()->equals($ncrNode->get('status')));
+        $this->assertSame($events[0]->get('published_at')->getTimestamp(), $ncrNode->get('published_at')->getTimestamp());
+        $response = SearchGalleriesResponseV1::create();
+        $this->ncrSearch->searchNodes(SearchGalleriesRequestV1::create(), new ParsedQuery(), $response);
+        $indexedNode = $response->get('nodes', [])[0];
+        $this->assertTrue(NodeStatus::PUBLISHED()->equals($indexedNode->get('status')));
+        $this->assertSame($events[0]->get('published_at')->getTimestamp(), $indexedNode->get('published_at')->getTimestamp());
+
+        $sentCommand = $this->pbjx->getSent()[0];
+        $this->assertInstanceOf(UpdateGalleryImageCountV1::class, $sentCommand);
+        $this->assertTrue($nodeRef->equals($sentCommand->get('node_ref')));
     }
 }
