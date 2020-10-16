@@ -82,29 +82,6 @@ class NcrGalleryProjector extends NcrProjector
         }
     }
 
-    protected function updateGalleryImageCount(Message $event, NodeRef $nodeRef, Pbjx $pbjx): void
-    {
-        if ($event->isReplay()) {
-            return;
-        }
-
-        static $jobs = [];
-        if (isset($jobs[$nodeRef->toString()])) {
-            // it's possible to get a bunch of asset events in one batch but
-            // we only need to count the gallery images one time per request
-            return;
-        }
-
-        $jobs[$nodeRef->toString()] = true;
-        $command = UpdateGalleryImageCountV1::create()->set('node_ref', $nodeRef);
-        $pbjx->copyContext($event, $command);
-        $command
-            ->set('ctx_correlator_ref', $event->generateMessageRef())
-            ->clear('ctx_app');
-
-        $pbjx->sendAt($command, strtotime('+300 seconds'), "{$nodeRef}.update-gallery-image-count");
-    }
-
 //    /**
 //     * @param Message $event
 //     * @param Pbjx    $pbjx
@@ -174,28 +151,13 @@ class NcrGalleryProjector extends NcrProjector
 //        $this->handleNodeExpired($event, $pbjx);
 //    }
 
-//    public function onGalleryImageCountUpdated(Message $event, Pbjx $pbjx): void
-//    {
-//        $this->onNodeEvent($event, $pbjx);
-//    }
-
-//    /**
-//     * @param NodeMarkedAsDraft $event
-//     * @param Pbjx              $pbjx
-//     */
-//    public function onGalleryMarkedAsDraft(NodeMarkedAsDraft $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeMarkedAsDraft($event, $pbjx);
-//    }
-//
-//    /**
-//     * @param NodeMarkedAsPending $event
-//     * @param Pbjx                $pbjx
-//     */
-//    public function onGalleryMarkedAsPending(NodeMarkedAsPending $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeMarkedAsPending($event, $pbjx);
-//    }
+    public function onGalleryImageCountUpdated(Message $event, Pbjx $pbjx): void
+    {
+        $nodeRef = $event->get('node_ref');
+        $node = $this->ncr->getNode($nodeRef);
+        $node->set('image_count', $event->get('image_count'));
+        $this->projectNode($node, $event, $pbjx);
+    }
 
     public function onGalleryPublished(Message $event, Pbjx $pbjx): void
     {
@@ -203,68 +165,26 @@ class NcrGalleryProjector extends NcrProjector
         $this->updateGalleryImageCount($event, $event->get('node_ref'), $pbjx);
     }
 
-//    /**
-//     * @param NodeRenamed $event
-//     * @param Pbjx        $pbjx
-//     */
-//    public function onGalleryRenamed(NodeRenamed $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeRenamed($event, $pbjx);
-//    }
-//
-//    /**
-//     * @param NodeScheduled $event
-//     * @param Pbjx          $pbjx
-//     */
-//    public function onGalleryScheduled(NodeScheduled $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeScheduled($event, $pbjx);
-//    }
-//
-//    /**
-//     * @param NodeUnpublished $event
-//     * @param Pbjx            $pbjx
-//     */
-//    public function onGalleryUnpublished(NodeUnpublished $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeUnpublished($event, $pbjx);
-//    }
-//
-//    /**
-//     * @param NodeUpdated $event
-//     * @param Pbjx        $pbjx
-//     */
-//    public function onGalleryUpdated(NodeUpdated $event, Pbjx $pbjx): void
-//    {
-//        $this->handleNodeUpdated($event, $pbjx);
-//        $this->updateGalleryImageCount($event, $event->get('node_ref'), $pbjx);
-//    }
-//
-//    /**
-//     * @param Message $event
-//     * @param NodeRef $nodeRef
-//     * @param Pbjx    $pbjx
-//     */
-//    protected function updateGalleryImageCount(Message $event, NodeRef $nodeRef, Pbjx $pbjx): void
-//    {
-//        if ($event->isReplay()) {
-//            return;
-//        }
-//
-//        static $jobs = [];
-//        if (isset($jobs[$nodeRef->toString()])) {
-//            // it's possible to get a bunch of asset events in one batch but
-//            // we only need to count the gallery images one time per request
-//            return;
-//        }
-//
-//        $jobs[$nodeRef->toString()] = true;
-//        $command = UpdateGalleryImageCountV1Mixin::findOne()->createMessage()->set('node_ref', $nodeRef);
-//        $pbjx->copyContext($event, $command);
-//        $command
-//            ->set('ctx_correlator_ref', $event->generateMessageRef())
-//            ->clear('ctx_app');
-//
-//        $pbjx->sendAt($command, strtotime('+300 seconds'), "{$nodeRef}.update-gallery-image-count");
-//    }
+    protected function updateGalleryImageCount(Message $event, NodeRef $nodeRef, Pbjx $pbjx): void
+    {
+        if ($event->isReplay()) {
+            return;
+        }
+
+        static $jobs = [];
+        if (isset($jobs[$nodeRef->toString()])) {
+            // it's possible to get a bunch of asset events in one batch but
+            // we only need to count the gallery images one time per request
+            return;
+        }
+
+        $jobs[$nodeRef->toString()] = true;
+        $command = UpdateGalleryImageCountV1::create()->set('node_ref', $nodeRef);
+        $pbjx->copyContext($event, $command);
+        $command
+            ->set('ctx_correlator_ref', $event->generateMessageRef())
+            ->clear('ctx_app');
+
+        $pbjx->sendAt($command, strtotime('+300 seconds'), "{$nodeRef}.update-gallery-image-count");
+    }
 }

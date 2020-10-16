@@ -12,7 +12,7 @@ use Triniti\Curator\UpdateGalleryImageCountHandler;
 use Triniti\Schemas\Curator\Mixin\UpdateGalleryImageCount\UpdateGalleryImageCountV1Mixin;
 use Triniti\Schemas\Dam\Mixin\SearchAssetsRequest\SearchAssetsRequestV1Mixin;
 
-final class UpdateGalleryImageCountHandlerTest extends AbstractPbjxTest
+final class UpdateGalleryImageCountHandlerTestOld extends AbstractPbjxTest
 {
     public function setup(): void
     {

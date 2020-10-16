@@ -6,6 +6,7 @@ namespace Triniti\Tests\Curator;
 use Acme\Schemas\Curator\Command\CreateGalleryV1;
 use Acme\Schemas\Curator\Command\PublishGalleryV1;
 use Acme\Schemas\Curator\Command\UpdateGalleryV1;
+use Acme\Schemas\Curator\Event\GalleryImageCountUpdatedV1;
 use Acme\Schemas\Curator\Node\GalleryV1;
 use Acme\Schemas\Curator\Request\SearchGalleriesRequestV1;
 use Acme\Schemas\Curator\Request\SearchGalleriesResponseV1;
@@ -189,5 +190,18 @@ final class NcrGalleryProjectorTest extends AbstractPbjxTest
         $sentCommand = $this->pbjx->getSent()[0];
         $this->assertInstanceOf(UpdateGalleryImageCountV1::class, $sentCommand);
         $this->assertTrue($nodeRef->equals($sentCommand->get('node_ref')));
+    }
+
+    public function testOnGalleryImageCountUpdated(): void
+    {
+        $node = GalleryV1::create();
+        $this->ncr->putNode($node);
+        $nodeRef = $node->generateNodeRef();
+        $event = GalleryImageCountUpdatedV1::create()
+            ->set('node_ref', $nodeRef)
+            ->set('image_count', 20);
+        $this->projector->onGalleryImageCountUpdated($event, $this->pbjx);
+
+        $this->assertSame(20, $this->ncr->getNode($nodeRef)->get('image_count'));
     }
 }
