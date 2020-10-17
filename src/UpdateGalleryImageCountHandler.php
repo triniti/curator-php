@@ -46,7 +46,7 @@ class UpdateGalleryImageCountHandler implements CommandHandler
             ->set('node_ref', $nodeRef)
             ->set('image_count', $imageCount);
         $pbjx->getEventStore()->putEvents(
-            StreamId::fromString(sprintf('acme:%s:%s', $nodeRef->getLabel(), $nodeRef->getId())),
+            StreamId::fromString(sprintf('%s:%s:%s', $nodeRef->getVendor(), $nodeRef->getLabel(), $nodeRef->getId())),
             [$event]
         );
     }
@@ -66,49 +66,10 @@ class UpdateGalleryImageCountHandler implements CommandHandler
         }
     }
 
-//    protected function handle(Message $command, Pbjx $pbjx): void
-//    {
-//        /** @var NodeRef $nodeRef */
-//        $nodeRef = $command->get('node_ref');
-//
-//        $gallery = $this->ncr->getNode($nodeRef, true, $this->createNcrContext($command));
-//        $imageCount = $this->getImageCount($command, $pbjx);
-//        if ($gallery->get('image_count') === $imageCount) {
-//            return;
-//        }
-//
-//        $event = $this->createGalleryImageCountUpdated($command, $pbjx);
-//        $event->set('node_ref', $nodeRef);
-//        $event->set('image_count', $imageCount);
-//        $this->putEvents($command, $pbjx, $this->createStreamId($nodeRef, $command, $event), [$event]);
-//    }
-
     protected function createGalleryImageCountUpdated(Message $command, Pbjx $pbjx): Message
     {
         $event = GalleryImageCountUpdatedV1::create();
         $pbjx->copyContext($command, $event);
         return $event;
     }
-
-//    /**
-//     * @param Message $command
-//     * @param Pbjx    $pbjx
-//     *
-//     * @return int
-//     */
-//    protected function getImageCount(Message $command, Pbjx $pbjx): int
-//    {
-//        $request = SearchAssetsRequestV1Mixin::findOne()->createMessage();
-//        $request
-//            ->addToSet('types', ['image-asset'])
-//            ->set('count', 1)
-//            ->set('gallery_ref', $command->get('node_ref'))
-//            ->set('status', NodeStatus::PUBLISHED());
-//
-//        try {
-//            return (int)$pbjx->copyContext($command, $request)->request($request)->get('total', 0);
-//        } catch (\Throwable $e) {
-//            return 0;
-//        }
-//    }
 }

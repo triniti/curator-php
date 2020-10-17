@@ -6,6 +6,7 @@ namespace Triniti\Tests\Curator;
 use Acme\Schemas\Curator\Command\UpdateGalleryImageCountV1;
 use Acme\Schemas\Curator\Node\GalleryV1;;
 
+use Gdbots\Pbj\SchemaCurie;
 use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Curator\UpdateGalleryImageCountHandler;
 use Triniti\Schemas\Curator\Event\GalleryImageCountUpdatedV1;
@@ -14,6 +15,10 @@ final class UpdateGalleryImageCountHandlerTest extends AbstractPbjxTest
 {
     public function testHandleCommand(): void
     {
+        $this->locator->registerRequestHandler(
+            SchemaCurie::fromString('triniti:dam:request:search-assets-request'),
+            new MockSearchNodesRequestHandler(new MockNcrSearch())
+        );
         $node = GalleryV1::create()->set('image_count', 20);
         $nodeRef = $node->generateNodeRef();
         $this->ncr->putNode($node);
@@ -31,6 +36,10 @@ final class UpdateGalleryImageCountHandlerTest extends AbstractPbjxTest
 
     public function testHandleCommandWithMatchingCount(): void
     {
+        $this->locator->registerRequestHandler(
+            SchemaCurie::fromString('triniti:dam:request:search-assets-request'),
+            new MockSearchNodesRequestHandler(new MockNcrSearch())
+        );
         $node = GalleryV1::create()->set('image_count', 0);
         $nodeRef = $node->generateNodeRef();
         $this->ncr->putNode($node);
