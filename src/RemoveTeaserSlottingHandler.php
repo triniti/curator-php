@@ -13,9 +13,8 @@ use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Schemas\Curator\Event\TeaserSlottingRemovedV1;
 use Triniti\Schemas\Curator\Request\SearchTeasersRequestV1;
 
-class RemoveTeaserSlottingHandler implements CommandHandler
+class g implements CommandHandler
 {
-
     public static function handlesCuries(): array
     {
         // deprecated mixins, will be removed in 3.x
@@ -72,59 +71,6 @@ class RemoveTeaserSlottingHandler implements CommandHandler
             );
         }
     }
-
-//    /**
-//     * @param Message|Command $command
-//     * @param Pbjx            $pbjx
-//     */
-//    protected function handle(Message $command, Pbjx $pbjx): void
-//    {
-//        if (!$command->has('slotting')) {
-//            return;
-//        }
-//
-//        /** @var NodeRef $exceptRef */
-//        $exceptRef = $command->get('except_ref');
-//
-//        $query = [];
-//        foreach ($command->get('slotting') as $key => $value) {
-//            $query[] = "slotting.{$key}:{$value}";
-//        }
-//
-//        /** @var Request $request */
-//        $request = $this->createSearchTeasersRequest($command, $pbjx)
-//            ->set('q', implode(' OR ', $query))
-//            ->set('status', NodeStatus::PUBLISHED());
-//
-//        $response = $pbjx->request($request);
-//
-//        /** @var Node $node */
-//        foreach ($response->get('nodes', []) as $node) {
-//            $nodeRef = NodeRef::fromNode($node);
-//            if (null !== $exceptRef && $exceptRef->equals($nodeRef)) {
-//                continue;
-//            }
-//
-//            /** @var Event $event */
-//            $event = $this->createTeaserSlottingRemoved($command, $pbjx);
-//            $event->set('node_ref', $nodeRef);
-//            $slottingKeys = [];
-//
-//            foreach ($command->get('slotting') as $key => $value) {
-//                $currentSlot = $node->getFromMap('slotting', $key, 0);
-//                if ($currentSlot === $value) {
-//                    $slottingKeys[] = $key;
-//                }
-//            }
-//
-//            if (empty($slottingKeys)) {
-//                continue;
-//            }
-//
-//            $event->addToSet('slotting_keys', $slottingKeys);
-//            $this->putEvents($command, $pbjx, $this->createStreamId($nodeRef, $command, $event), [$event]);
-//        }
-//    }
 
     protected function createSearchTeasersRequest(Message $command, Pbjx $pbjx): Message
     {

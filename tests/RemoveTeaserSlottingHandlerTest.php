@@ -52,4 +52,24 @@ final class RemoveTeaserSlottingHandlerTest extends AbstractPbjxTest
         }
         $this->assertSame(0, $eventCount);
     }
+
+    public function testHandleCommandNoSlottingConflicts(): void
+    {
+        $teaser = ArticleTeaserV1::create()->addToMap('slotting', 'home', 1);
+        $ncrSearch = new MockNcrSearch();
+        $ncrSearch->indexNodes([$teaser]);
+        $this->locator->registerRequestHandler(
+            SchemaCurie::fromString('triniti:curator:request:search-teasers-request'),
+            new MockSearchNodesRequestHandler($ncrSearch),
+            );
+        $command = RemoveTeaserSlottingV1::create()->addToMap('slotting', 'home', 2);
+        $handler = new RemoveTeaserSlottingHandler();
+        $handler->handleCommand($command, $this->pbjx);
+
+        $eventCount = 0;
+        foreach ($this->eventStore->pipeAllEvents() as [$event, $streamId]) {
+            $eventCount++;
+        }
+        $this->assertSame(0, $eventCount);
+    }
 }
