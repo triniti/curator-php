@@ -20,7 +20,7 @@ trait SyncTeaserTrait
         $cursor = null;
 
         do {
-            $builder = IndexQueryBuilder::create($qname, 'target_ref', $targetRef->toString())
+            $builder = IndexQueryBuilder::create($qname, 'target', $targetRef->toString())
                 ->setCursor($cursor)
                 ->sortAsc(false);
 

@@ -6,6 +6,7 @@ namespace Triniti\Tests\Curator;
 use Acme\Schemas\Curator\Command\UpdateGalleryImageCountV1;
 use Acme\Schemas\Curator\Node\GalleryV1;;
 
+use Gdbots\Ncr\Repository\InMemoryNcr;
 use Gdbots\Pbj\SchemaCurie;
 use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Curator\UpdateGalleryImageCountHandler;
@@ -13,6 +14,14 @@ use Triniti\Schemas\Curator\Event\GalleryImageCountUpdatedV1;
 
 final class UpdateGalleryImageCountHandlerTest extends AbstractPbjxTest
 {
+    protected InMemoryNcr $ncr;
+
+    public function setup(): void
+    {
+        parent::setup();
+        $this->ncr = new InMemoryNcr();
+    }
+
     public function testHandleCommand(): void
     {
         $this->locator->registerRequestHandler(

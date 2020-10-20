@@ -6,14 +6,18 @@ namespace Triniti\Tests\Curator;
 use Acme\Schemas\Curator\Event\TeaserPublishedV1;
 use Acme\Schemas\Curator\Node\ArticleTeaserV1;
 use Acme\Schemas\News\Node\ArticleV1;
+use Gdbots\Ncr\Repository\InMemoryNcr;
 use Triniti\Curator\TeaserWatcher;
 use Triniti\Schemas\Curator\Command\RemoveTeaserSlottingV1;
 
 final class TeaserWatcherTest extends AbstractPbjxTest
 {
+    private InMemoryNcr $ncr;
+
     public function setup(): void
     {
         parent::setup();
+        $this->ncr = new InMemoryNcr();
         $this->pbjx = new MockPbjx($this->locator);
     }
 

@@ -15,6 +15,7 @@ use Acme\Schemas\Dam\Event\AssetDeletedV1;
 use Acme\Schemas\Dam\Event\GalleryAssetReorderedV1;
 use Acme\Schemas\Dam\Node\ImageAssetV1;
 use Acme\Schemas\Dam\Node\VideoAssetV1;
+use Gdbots\Ncr\Repository\InMemoryNcr;
 use Gdbots\QueryParser\ParsedQuery;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Triniti\Curator\GalleryAggregate;
@@ -26,11 +27,13 @@ final class NcrGalleryProjectorTest extends AbstractPbjxTest
 {
     protected NcrGalleryProjector $projector;
     protected MockNcrSearch $ncrSearch;
+    protected InMemoryNcr $ncr;
 
     public function setup(): void
     {
         parent::setup();
         $this->ncrSearch = new MockNcrSearch();
+        $this->ncr = new InMemoryNcr();
         $this->projector = new NcrGalleryProjector($this->ncr, $this->ncrSearch);
         $this->pbjx = new MockPbjx($this->locator);
     }
