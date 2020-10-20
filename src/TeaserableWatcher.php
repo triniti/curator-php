@@ -27,9 +27,6 @@ class TeaserableWatcher implements EventSubscriber
         $this->ncr = $ncr;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public static function getSubscribedEvents()
     {
         return [
