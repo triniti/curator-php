@@ -7,14 +7,11 @@ use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
 use Gdbots\Pbj\SchemaCurie;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\EventSubscriber;
 use Gdbots\Pbjx\Pbjx;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Ncr\Mixin\NodeDeleted\NodeDeleted;
-use Gdbots\Schemas\Ncr\Mixin\NodeExpired\NodeExpired;
-use Gdbots\Schemas\Ncr\NodeRef;
-use Triniti\Schemas\Curator\Mixin\SyncTeaser\SyncTeaserV1Mixin;
-use Triniti\Schemas\Curator\Mixin\Teaserable\TeaserableV1Mixin;
+use Triniti\Schemas\Curator\Command\SyncTeaserV1;
 
 /**
  * Responsible for watching changes to nodes that have
@@ -135,9 +132,9 @@ class TeaserableWatcher implements EventSubscriber
             return;
         }
 
-        if ($event instanceof NodeDeleted) {
+        if ($event::schema()->hasMixin('gdbots:ncr:mixin:node-deleted')) {
             $operation = 'delete';
-        } else if ($event instanceof NodeExpired) {
+        } else if ($event::schema()->hasMixin('gdbots:ncr:mixin:node-expired')) {
             $operation = 'expire';
         } else {
             $operation = 'unpublish';
@@ -185,7 +182,7 @@ class TeaserableWatcher implements EventSubscriber
             return;
         }
 
-        $command = SyncTeaserV1Mixin::findOne()->createMessage()->set('target_ref', $targetRef);
+        $command = SyncTeaserV1::create()->set('target_ref', $targetRef);
         $pbjx->copyContext($event, $command);
         $command
             ->set('ctx_correlator_ref', $event->generateMessageRef())
@@ -198,8 +195,8 @@ class TeaserableWatcher implements EventSubscriber
     {
         static $validQNames = null;
         if (null === $validQNames) {
-            foreach (TeaserableV1Mixin::findAll() as $schema) {
-                $validQNames[$schema->getQName()->getMessage()] = true;
+            foreach (MessageResolver::findAllUsingMixin('triniti:curator:mixin:teaserable:v1', false) as $schema) {
+                $validQNames[explode(':', $schema)[3]] = true;
             }
         }
 

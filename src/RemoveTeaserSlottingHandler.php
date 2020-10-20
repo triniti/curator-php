@@ -13,7 +13,7 @@ use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Schemas\Curator\Event\TeaserSlottingRemovedV1;
 use Triniti\Schemas\Curator\Request\SearchTeasersRequestV1;
 
-class g implements CommandHandler
+class RemoveTeaserSlottingHandler implements CommandHandler
 {
     public static function handlesCuries(): array
     {

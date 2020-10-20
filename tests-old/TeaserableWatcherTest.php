@@ -31,7 +31,7 @@ use Gdbots\Schemas\Pbjx\Mixin\Event\Event;
 use Triniti\Curator\TeaserableWatcher;
 use Triniti\Schemas\Curator\Mixin\SyncTeaser\SyncTeaser;
 
-final class TeaserableWatcherTest extends AbstractPbjxTest
+final class TeaserableWatcherTestOld extends AbstractPbjxTest
 {
     /** @var NcrSearch|\PHPUnit\Framework\MockObject\MockObject */
     protected $ncrSearch;

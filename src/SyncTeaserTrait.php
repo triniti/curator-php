@@ -6,19 +6,13 @@ namespace Triniti\Curator;
 use Gdbots\Ncr\IndexQueryBuilder;
 use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\SchemaQName;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Ncr\NodeRef;
 
 trait SyncTeaserTrait
 {
     protected Ncr $ncr;
 
-    /**
-     * @param NodeRef    $targetRef
-     * @param NodeStatus $status
-     *
-     * @return array
-     */
     protected function getTeasers(NodeRef $targetRef, ?NodeStatus $status = null): array
     {
         $qname = SchemaQName::fromString("{$targetRef->getVendor()}:{$targetRef->getLabel()}-teaser");
@@ -26,7 +20,7 @@ trait SyncTeaserTrait
         $cursor = null;
 
         do {
-            $builder = IndexQueryBuilder::create($qname, 'target', $targetRef->toString())
+            $builder = IndexQueryBuilder::create($qname, 'target_ref', $targetRef->toString())
                 ->setCursor($cursor)
                 ->sortAsc(false);
 
