@@ -18,7 +18,7 @@ use Gdbots\Schemas\Ncr\NodeRef;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Triniti\Curator\NcrTeaserProjector;
 
-final class NcrTeaserProjectorTest extends AbstractPbjxTest
+final class NcrTeaserProjectorTestOld extends AbstractPbjxTest
 {
     /** @var NcrTeaserProjector */
     protected $projector;

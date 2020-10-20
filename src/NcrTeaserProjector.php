@@ -3,134 +3,54 @@ declare(strict_types=1);
 
 namespace Triniti\Curator;
 
-use Gdbots\Ncr\AbstractNodeProjector;
 use Gdbots\Ncr\Ncr;
+use Gdbots\Ncr\NcrProjector;
 use Gdbots\Ncr\NcrSearch;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
-use Gdbots\Pbj\Schema;
-use Gdbots\Pbj\SchemaCurie;
-use Gdbots\Pbjx\EventSubscriber;
-use Gdbots\Pbjx\EventSubscriberTrait;
 use Gdbots\Pbjx\Pbjx;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Ncr\Mixin\ExpireNode\ExpireNode;
-use Gdbots\Schemas\Ncr\Mixin\Node\Node;
-use Gdbots\Schemas\Ncr\Mixin\NodeCreated\NodeCreated;
-use Gdbots\Schemas\Ncr\Mixin\NodeDeleted\NodeDeleted;
-use Gdbots\Schemas\Ncr\Mixin\NodeExpired\NodeExpired;
-use Gdbots\Schemas\Ncr\Mixin\NodeMarkedAsDraft\NodeMarkedAsDraft;
-use Gdbots\Schemas\Ncr\Mixin\NodeMarkedAsPending\NodeMarkedAsPending;
-use Gdbots\Schemas\Ncr\Mixin\NodePublished\NodePublished;
-use Gdbots\Schemas\Ncr\Mixin\NodeScheduled\NodeScheduled;
-use Gdbots\Schemas\Ncr\Mixin\NodeUnpublished\NodeUnpublished;
-use Gdbots\Schemas\Ncr\Mixin\NodeUpdated\NodeUpdated;
-use Gdbots\Schemas\Ncr\Mixin\PublishNode\PublishNode;
-use Gdbots\Schemas\Pbjx\Mixin\Command\Command;
-use Gdbots\Schemas\Pbjx\Mixin\Event\Event;
 use Psr\Cache\CacheItemPoolInterface;
-use Triniti\Schemas\Curator\Mixin\RemoveTeaserSlotting\RemoveTeaserSlottingV1Mixin;
-use Triniti\Schemas\Curator\Mixin\Teaser\TeaserV1Mixin;
+use Triniti\Schemas\Curator\Command\RemoveTeaserSlottingV1;
 
-class NcrTeaserProjector extends AbstractNodeProjector implements EventSubscriber
+class NcrTeaserProjector extends NcrProjector
 {
-    use EventSubscriberTrait;
+    protected CacheItemPoolInterface $cache;
 
-    /** @var CacheItemPoolInterface */
-    protected $cache;
-
-    /**
-     * @param Ncr                    $ncr
-     * @param NcrSearch              $ncrSearch
-     * @param CacheItemPoolInterface $cache
-     * @param bool                   $indexOnReplay
-     */
-    public function __construct(
-        Ncr $ncr,
-        NcrSearch $ncrSearch,
-        CacheItemPoolInterface $cache,
-        bool $indexOnReplay = false
-    ) {
-        parent::__construct($ncr, $ncrSearch, $indexOnReplay);
+    public function __construct(Ncr $ncr, NcrSearch $ncrSearch, CacheItemPoolInterface $cache, bool $enabled = true)
+    {
+        parent::__construct($ncr, $ncrSearch, $enabled);
         $this->cache = $cache;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public static function getSubscribedEvents()
     {
-        /** @var Schema $schema */
-        $schema = TeaserV1Mixin::findAll()[0];
-        $curie = $schema->getCurie();
+        $vendor = MessageResolver::getDefaultVendor();
         return [
-            "{$curie->getVendor()}:{$curie->getPackage()}:event:*" => 'onEvent',
+            "{$vendor}:curator:event:teaser-published"      => 'onTeaserPublished',
+            "{$vendor}:curator:event:teaser-updated"        => 'onTeaserUpdated',
+            'triniti:curator:event:teaser-slotting-removed' => 'onTeaserSlottingRemoved',
         ];
     }
 
-    /**
-     * @param NodeCreated $event
-     * @param Pbjx        $pbjx
-     */
-    public function onTeaserCreated(NodeCreated $event, Pbjx $pbjx): void
+    public function onTeaserPublished(Message $event, Pbjx $pbjx): void
     {
-        $this->handleNodeCreated($event, $pbjx);
-    }
-
-    /**
-     * @param NodeDeleted $event
-     * @param Pbjx        $pbjx
-     */
-    public function onTeaserDeleted(NodeDeleted $event, Pbjx $pbjx): void
-    {
-        $this->handleNodeDeleted($event, $pbjx);
-    }
-
-    /**
-     * @param NodeExpired $event
-     * @param Pbjx        $pbjx
-     */
-    public function onTeaserExpired(NodeExpired $event, Pbjx $pbjx): void
-    {
-        $this->handleNodeExpired($event, $pbjx);
-    }
-
-    /**
-     * @param NodeMarkedAsDraft $event
-     * @param Pbjx              $pbjx
-     */
-    public function onTeaserMarkedAsDraft(NodeMarkedAsDraft $event, Pbjx $pbjx): void
-    {
-        $this->handleNodeMarkedAsDraft($event, $pbjx);
-    }
-
-    /**
-     * @param NodeMarkedAsPending $event
-     * @param Pbjx                $pbjx
-     */
-    public function onTeaserMarkedAsPending(NodeMarkedAsPending $event, Pbjx $pbjx): void
-    {
-        $this->handleNodeMarkedAsPending($event, $pbjx);
-    }
-
-    /**
-     * @param NodePublished $event
-     * @param Pbjx          $pbjx
-     */
-    public function onTeaserPublished(NodePublished $event, Pbjx $pbjx): void
-    {
-        $this->handleNodePublished($event, $pbjx);
+        $this->onNodeEvent($event, $pbjx);
         if ($event->isReplay()) {
             return;
         }
 
-        $node = $this->ncr->getNode($event->get('node_ref'), false, $this->createNcrContext($event));
+        $node = $this->ncr->getNode($event->get('node_ref'));
+
+        if (!$node::schema()->hasMixin('triniti:curator:mixin:teaser')) {
+            return;
+        }
+
         if (!$node->has('slotting')) {
             return;
         }
 
-        /** @var Command $command */
-        $command = $this->createRemoveTeaserSlotting($node, $event, $pbjx)
+        $command = RemoveTeaserSlottingV1::create()
             ->set('except_ref', $event->get('node_ref'));
 
         foreach ($node->get('slotting') as $key => $value) {
@@ -142,54 +62,9 @@ class NcrTeaserProjector extends AbstractNodeProjector implements EventSubscribe
         $pbjx->sendAt($command, strtotime('+5 seconds'));
     }
 
-    /**
-     * @param NodeScheduled $event
-     * @param Pbjx          $pbjx
-     */
-    public function onTeaserScheduled(NodeScheduled $event, Pbjx $pbjx): void
+    public function onTeaserUpdated(Message $event, Pbjx $pbjx): void
     {
-        $this->handleNodeScheduled($event, $pbjx);
-    }
-
-    /**
-     * @param Message|Event $event
-     * @param Pbjx          $pbjx
-     */
-    public function onTeaserSlottingRemoved(Message $event, Pbjx $pbjx): void
-    {
-        $node = $this->ncr->getNode($event->get('node_ref'), true, $this->createNcrContext($event));
-
-        $cacheKeys = [];
-        foreach ($event->get('slotting_keys', []) as $key) {
-            $node->removeFromMap('slotting', $key);
-            $cacheKeys[] = "curator.slotting.{$key}.php";
-        }
-
-        $this->updateAndIndexNode($node, $event, $pbjx);
-
-        if ($event->isReplay()) {
-            return;
-        }
-
-        $this->cache->deleteItems($cacheKeys);
-    }
-
-    /**
-     * @param NodeUnpublished $event
-     * @param Pbjx            $pbjx
-     */
-    public function onTeaserUnpublished(NodeUnpublished $event, Pbjx $pbjx): void
-    {
-        $this->handleNodeUnpublished($event, $pbjx);
-    }
-
-    /**
-     * @param NodeUpdated $event
-     * @param Pbjx        $pbjx
-     */
-    public function onTeaserUpdated(NodeUpdated $event, Pbjx $pbjx): void
-    {
-        $this->handleNodeUpdated($event, $pbjx);
+        $this->onNodeUpdated($event, $pbjx);
         if ($event->isReplay() || !$event->has('old_node')) {
             return;
         }
@@ -199,6 +74,13 @@ class NcrTeaserProjector extends AbstractNodeProjector implements EventSubscribe
 
         /** @var Message $newNode */
         $newNode = $event->get('new_node');
+
+        if (
+            !$oldNode::schema()->hasMixin('triniti:curator:mixin:teaser')
+            || !$newNode::schema()->hasMixin('triniti:curator:mixin:teaser')
+        ) {
+            return;
+        }
 
         if (!NodeStatus::PUBLISHED()->equals($newNode->get('status'))) {
             return;
@@ -213,8 +95,7 @@ class NcrTeaserProjector extends AbstractNodeProjector implements EventSubscribe
             return;
         }
 
-        /** @var Command $command */
-        $command = $this->createRemoveTeaserSlotting($newNode, $event, $pbjx)
+        $command = RemoveTeaserSlottingV1::create()
             ->set('except_ref', $event->get('node_ref'));
 
         foreach ($newNode->get('slotting') as $key => $value) {
@@ -226,41 +107,22 @@ class NcrTeaserProjector extends AbstractNodeProjector implements EventSubscribe
         $pbjx->sendAt($command, strtotime('+5 seconds'));
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function createExpireNode(Node $node, Event $event, Pbjx $pbjx): ExpireNode
+    public function onTeaserSlottingRemoved(Message $event, Pbjx $pbjx): void
     {
-        $curie = $node::schema()->getCurie();
-        $commandCurie = "{$curie->getVendor()}:{$curie->getPackage()}:command:expire-teaser";
+        $node = $this->ncr->getNode($event->get('node_ref'), true);
 
-        /** @var ExpireNode $class */
-        $class = MessageResolver::resolveCurie(SchemaCurie::fromString($commandCurie));
-        return $class::create();
-    }
+        $cacheKeys = [];
+        foreach ($event->get('slotting_keys', []) as $key) {
+            $node->removeFromMap('slotting', $key);
+            $cacheKeys[] = "curator.slotting.{$key}.php";
+        }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function createPublishNode(Node $node, Event $event, Pbjx $pbjx): PublishNode
-    {
-        $curie = $node::schema()->getCurie();
-        $commandCurie = "{$curie->getVendor()}:{$curie->getPackage()}:command:publish-teaser";
+        $this->projectNode($node, $event, $pbjx);
 
-        /** @var PublishNode $class */
-        $class = MessageResolver::resolveCurie(SchemaCurie::fromString($commandCurie));
-        return $class::create();
-    }
+        if ($event->isReplay()) {
+            return;
+        }
 
-    /**
-     * @param Message $node
-     * @param Message $event
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
-    protected function createRemoveTeaserSlotting(Message $node, Message $event, Pbjx $pbjx): Message
-    {
-        return RemoveTeaserSlottingV1Mixin::findOne()->createMessage();
+        $this->cache->deleteItems($cacheKeys);
     }
 }
