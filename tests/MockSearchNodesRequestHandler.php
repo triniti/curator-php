@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Triniti\Tests\Curator;
 
+use Acme\Schemas\Curator\Request\SearchPromotionsResponseV1;
 use Acme\Schemas\Curator\Request\SearchTeasersResponseV1;
 use Acme\Schemas\Dam\Request\SearchAssetsResponseV1;
 use Gdbots\Ncr\AbstractSearchNodesRequestHandler;
@@ -21,8 +22,12 @@ final class MockSearchNodesRequestHandler extends AbstractSearchNodesRequestHand
             case 'search-assets-request':
                 $response = SearchAssetsResponseV1::create();
                 break;
+            case 'search-promotions-request':
+                $response = SearchPromotionsResponseV1::create();
+                break;
             default:
-                var_dump('unhandled case in MockSearchNodesRequestHandler');
+                var_dump('unhandled case in MockSearchNodesRequestHandler:');
+                var_dump($request::schema()->getCurie()->getMessage());
                 die();
         }
         $this->ncrSearch->searchNodes($request, new ParsedQuery(), $response);

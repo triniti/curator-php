@@ -19,8 +19,8 @@ final class RemoveTeaserSlottingHandlerTest extends AbstractPbjxTest
         $ncrSearch->indexNodes([$teaser]);
         $this->locator->registerRequestHandler(
             SchemaCurie::fromString('triniti:curator:request:search-teasers-request'),
-            new MockSearchNodesRequestHandler($ncrSearch),
-            );
+            new MockSearchNodesRequestHandler($ncrSearch)
+        );
         $command = RemoveTeaserSlottingV1::create()->addToMap('slotting', 'home', 1);
         $handler = new RemoveTeaserSlottingHandler();
         $handler->handleCommand($command, $this->pbjx);
