@@ -6,7 +6,10 @@ namespace Triniti\Curator;
 use Gdbots\Ncr\AbstractSearchNodesRequestHandler;
 use Gdbots\Ncr\Ncr;
 use Gdbots\Ncr\NcrSearch;
-use Gdbots\Pbj\Schema;
+use Gdbots\Pbj\Message;
+use Gdbots\Pbj\MessageResolver;
+use Gdbots\Pbj\SchemaCurie;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\Pbjx;
 use Gdbots\QueryParser\Enum\BoolOperator;
 use Gdbots\QueryParser\Node\Field;
@@ -15,31 +18,18 @@ use Gdbots\QueryParser\ParsedQuery;
 use Gdbots\QueryParser\QueryParser;
 use Gdbots\Schemas\Common\Enum\Trinary;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Ncr\Mixin\Node\Node;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesResponse\SearchNodesResponse;
-use Gdbots\Schemas\Ncr\NodeRef;
 use Psr\Cache\CacheItemPoolInterface;
 use Triniti\Schemas\Curator\Enum\SearchTeasersSort;
-use Triniti\Schemas\Curator\Mixin\SearchTeasersRequest\SearchTeasersRequestV1Mixin;
-use Triniti\Schemas\Curator\Mixin\Teaser\TeaserV1Mixin;
+use Triniti\Schemas\Curator\Request\SearchTeasersResponseV1;
 
 class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
 {
     protected const SLOTTING_MAX = 15;
     protected const SLOTTING_TTL = 180;
 
-    /** @var Ncr */
-    protected $ncr;
+    protected Ncr $ncr;
+    protected CacheItemPoolInterface $cache;
 
-    /** @var CacheItemPoolInterface */
-    protected $cache;
-
-    /**
-     * @param NcrSearch              $ncrSearch
-     * @param Ncr                    $ncr
-     * @param CacheItemPoolInterface $cache
-     */
     public function __construct(NcrSearch $ncrSearch, Ncr $ncr, CacheItemPoolInterface $cache)
     {
         parent::__construct($ncrSearch);
@@ -47,10 +37,20 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
         $this->cache = $cache;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function handle(SearchNodesRequest $request, Pbjx $pbjx): SearchNodesResponse
+    public static function handlesCuries(): array
+    {
+        // deprecated mixins, will be removed in 3.x
+        $curies = MessageResolver::findAllUsingMixin('triniti:curator:mixin:search-teasers-request:v1', false);
+        $curies[] = 'triniti:curator:request:search-teasers-request';
+        return $curies;
+    }
+
+    protected function createSearchNodesResponse(Message $request, Pbjx $pbjx): Message
+    {
+        return SearchTeasersResponseV1::create();
+    }
+
+    public function handleRequest(Message $request, Pbjx $pbjx): Message
     {
         // todo: implement popularity sorting on teasers
         /*
@@ -67,24 +67,24 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
         }
 
         if (empty($slottedNodes)) {
-            return parent::handle($request, $pbjx);
+            return parent::handleRequest($request, $pbjx);
         }
 
         $request = clone $request;
         $count = $request->get('count');
         $request->set('count', $count + count($slottedNodes));
-        $response = parent::handle($request, $pbjx);
+        $response = parent::handleRequest($request, $pbjx);
 
         $slottedIds = [];
         foreach ($slottedNodes as $slottedNode) {
             $slottedIds[(string)$slottedNode->get('_id')] = true;
         }
 
-        /** @var Node[] $unslottedNodes */
+        /** @var Message[] $unslottedNodes */
         $unslottedNodes = $response->get('nodes', []);
         $response->clear('nodes');
 
-        /** @var Node[] $finalNodes */
+        /** @var Message[] $finalNodes */
         $finalNodes = [];
 
         $page = $request->get('page');
@@ -124,12 +124,12 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
      * Returns the slotted nodes for a given slotting_key.
      * The return array is keyed by the slot position it should occupy.
      *
-     * @param SearchNodesRequest $request
-     * @param Pbjx               $pbjx
+     * @param Message $request
+     * @param Pbjx $pbjx
      *
-     * @return Node[]
+     * @return Message[]
      */
-    protected function getSlottedNodes(SearchNodesRequest $request, Pbjx $pbjx): array
+    protected function getSlottedNodes(Message $request, Pbjx $pbjx): array
     {
         if (!$request->has('slotting_key')
             || !NodeStatus::PUBLISHED()->equals($request->get('status'))
@@ -149,7 +149,7 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
                     $nodeRefs[] = NodeRef::fromString($nodeRefStr);
                 }
 
-                /** @var Node[] $slots */
+                /** @var Message[] $slots */
                 $slots = [];
                 $nodes = $this->ncr->getNodes($nodeRefs, false, $this->createNcrContext($request));
 
@@ -178,7 +178,7 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
         $query = "+slotting.{$slottingKey}:[1..{$slottingMax}]";
         $parsedQuery = (new QueryParser())->parse($query);
 
-        /** @var SearchNodesRequest $slotRequest */
+        /** @var Message $slotRequest */
         $slotRequest = $request::schema()->createMessage();
         $slotRequest
             ->set('q', $query)
@@ -197,14 +197,13 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
             $slotRequest,
             $parsedQuery,
             $response,
-            $qnames,
-            $this->createNcrSearchContext($slotRequest)
+            $qnames
         );
 
         $slots = [];
         $slotsToCache = [];
 
-        /** @var Node $node */
+        /** @var Message $node */
         foreach ($response->get('nodes', []) as $node) {
             $slot = (int)$node->getFromMap('slotting', $slottingKey);
             if (isset($slots[$slot])) {
@@ -220,17 +219,15 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
         return $slots;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function createQNamesForSearchNodes(SearchNodesRequest $request, ParsedQuery $parsedQuery): array
+    protected function createQNamesForSearchNodes(Message $request, ParsedQuery $parsedQuery): array
     {
-        $validQNames = [];
-
-        /** @var Schema $schema */
-        foreach (TeaserV1Mixin::findAll() as $schema) {
-            $qname = $schema->getQName();
-            $validQNames[$qname->getMessage()] = $qname;
+        static $validQNames = null;
+        if (null === $validQNames) {
+            $validQNames = [];
+            foreach (MessageResolver::findAllUsingMixin('triniti:curator:mixin:teaser:v1', false) as $curie) {
+                $qname = SchemaCurie::fromString($curie)->getQName();
+                $validQNames[$qname->getMessage()] = $qname;
+            }
         }
 
         $qnames = [];
@@ -247,10 +244,7 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
         return $qnames;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function beforeSearchNodes(SearchNodesRequest $request, ParsedQuery $parsedQuery): void
+    protected function beforeSearchNodes(Message $request, ParsedQuery $parsedQuery): void
     {
         parent::beforeSearchNodes($request, $parsedQuery);
         $required = BoolOperator::REQUIRED();
@@ -315,15 +309,5 @@ class SearchTeasersRequestHandler extends AbstractSearchNodesRequestHandler
                 )
             );
         }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function handlesCuries(): array
-    {
-        return [
-            SearchTeasersRequestV1Mixin::findOne()->getCurie(),
-        ];
     }
 }

@@ -115,8 +115,9 @@ class RenderRequestInterceptor implements EventSubscriber
             /** @var Message $response */
             $response = $cacheItem->get();
             if (
-                $response::schema()->hasMixin('triniti:curator:mixin:render-promotion-response')
-                || $response::schema()->hasMixin('triniti:curator:mixin:render-widget-response')
+                $response instanceof Message
+                && ($response::schema()->hasMixin('triniti:curator:mixin:render-promotion-response')
+                || $response::schema()->hasMixin('triniti:curator:mixin:render-widget-response'))
             ) {
                 /*
                 if ($response->isFrozen()) {

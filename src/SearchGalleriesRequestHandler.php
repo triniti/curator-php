@@ -4,21 +4,33 @@ declare(strict_types=1);
 namespace Triniti\Curator;
 
 use Gdbots\Ncr\AbstractSearchNodesRequestHandler;
+use Gdbots\Pbj\Message;
+use Gdbots\Pbj\MessageResolver;
+use Gdbots\Pbj\WellKnown\NodeRef;
+use Gdbots\Pbjx\Pbjx;
 use Gdbots\QueryParser\Enum\BoolOperator;
 use Gdbots\QueryParser\Node\Field;
 use Gdbots\QueryParser\Node\Word;
 use Gdbots\QueryParser\ParsedQuery;
 use Gdbots\Schemas\Common\Enum\Trinary;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
-use Gdbots\Schemas\Ncr\NodeRef;
-use Triniti\Schemas\Curator\Mixin\SearchGalleriesRequest\SearchGalleriesRequestV1Mixin;
+use Triniti\Schemas\Curator\Request\SearchGalleriesResponseV1;
 
 class SearchGalleriesRequestHandler extends AbstractSearchNodesRequestHandler
 {
-    /**
-     * {@inheritdoc}
-     */
-    protected function beforeSearchNodes(SearchNodesRequest $request, ParsedQuery $parsedQuery): void
+    public static function handlesCuries(): array
+    {
+        // deprecated mixins, will be removed in 3.x
+        $curies = MessageResolver::findAllUsingMixin('triniti:curator:mixin:search-galleries-request:v1', false);
+        $curies[] = 'triniti:curator:request:search-galleries-request';
+        return $curies;
+    }
+
+    protected function createSearchNodesResponse(Message $request, Pbjx $pbjx): Message
+    {
+        return SearchGalleriesResponseV1::create();
+    }
+
+    protected function beforeSearchNodes(Message $request, ParsedQuery $parsedQuery): void
     {
         parent::beforeSearchNodes($request, $parsedQuery);
         $required = BoolOperator::REQUIRED();
@@ -63,15 +75,5 @@ class SearchGalleriesRequestHandler extends AbstractSearchNodesRequestHandler
                 )
             );
         }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function handlesCuries(): array
-    {
-        return [
-            SearchGalleriesRequestV1Mixin::findOne()->getCurie(),
-        ];
     }
 }

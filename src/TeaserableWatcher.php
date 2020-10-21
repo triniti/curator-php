@@ -6,6 +6,7 @@ namespace Triniti\Curator;
 use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
+use Gdbots\Pbj\Schema;
 use Gdbots\Pbj\SchemaCurie;
 use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\EventSubscriber;
@@ -192,8 +193,10 @@ class TeaserableWatcher implements EventSubscriber
     {
         static $validQNames = null;
         if (null === $validQNames) {
-            foreach (MessageResolver::findAllUsingMixin('triniti:curator:mixin:teaserable:v1', false) as $schema) {
-                $validQNames[explode(':', $schema)[3]] = true;
+            $validQNames = [];
+            foreach (MessageResolver::findAllUsingMixin('triniti:curator:mixin:teaserable:v1', false) as $curie) {
+                $qname = SchemaCurie::fromString($curie)->getQName();
+                $validQNames[$qname->getMessage()] = $qname;
             }
         }
 

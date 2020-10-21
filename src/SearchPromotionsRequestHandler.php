@@ -5,34 +5,41 @@ namespace Triniti\Curator;
 
 use Gdbots\Ncr\AbstractSearchNodesRequestHandler;
 use Gdbots\Ncr\NcrSearch;
+use Gdbots\Pbj\Message;
+use Gdbots\Pbj\MessageResolver;
+use Gdbots\Pbjx\Pbjx;
 use Gdbots\QueryParser\Enum\BoolOperator;
 use Gdbots\QueryParser\Enum\ComparisonOperator;
 use Gdbots\QueryParser\Node\Field;
 use Gdbots\QueryParser\Node\Numbr;
 use Gdbots\QueryParser\Node\Word;
 use Gdbots\QueryParser\ParsedQuery;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
-use Triniti\Schemas\Curator\Mixin\SearchPromotionsRequest\SearchPromotionsRequestV1Mixin;
+use Triniti\Schemas\Curator\Request\SearchPromotionsResponseV1;
 
 class SearchPromotionsRequestHandler extends AbstractSearchNodesRequestHandler
 {
-    /** @var \DateTimeZone */
-    protected $timeZone;
+    protected \DateTimeZone $timeZone;
 
-    /**
-     * @param NcrSearch $ncrSearch
-     * @param string    $timeZone
-     */
     public function __construct(NcrSearch $ncrSearch, ?string $timeZone = null)
     {
         parent::__construct($ncrSearch);
         $this->timeZone = new \DateTimeZone($timeZone ?: 'UTC');
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function beforeSearchNodes(SearchNodesRequest $request, ParsedQuery $parsedQuery): void
+    public static function handlesCuries(): array
+    {
+        // deprecated mixins, will be removed in 3.x
+        $curies = MessageResolver::findAllUsingMixin('triniti:curator:mixin:search-promotions-request:v1', false);
+        $curies[] = 'triniti:curator:request:search-promotions-request';
+        return $curies;
+    }
+
+    protected function createSearchNodesResponse(Message $request, Pbjx $pbjx): Message
+    {
+        return SearchPromotionsResponseV1::create();
+    }
+
+    protected function beforeSearchNodes(Message $request, ParsedQuery $parsedQuery): void
     {
         parent::beforeSearchNodes($request, $parsedQuery);
         $required = BoolOperator::REQUIRED();
@@ -75,15 +82,5 @@ class SearchPromotionsRequestHandler extends AbstractSearchNodesRequestHandler
                     )
                 );
         }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function handlesCuries(): array
-    {
-        return [
-            SearchPromotionsRequestV1Mixin::findOne()->getCurie(),
-        ];
     }
 }
