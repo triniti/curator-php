@@ -4,21 +4,16 @@ declare(strict_types=1);
 namespace Triniti\Curator;
 
 use Gdbots\Pbj\Message;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\Event\GetResponseEvent;
 use Gdbots\Pbjx\Event\ResponseCreatedEvent;
 use Gdbots\Pbjx\EventSubscriber;
-use Gdbots\Schemas\Ncr\NodeRef;
-use Gdbots\Schemas\Pbjx\Mixin\Request\Request;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
-use Triniti\Schemas\Common\RenderContext;
-use Triniti\Schemas\Curator\Mixin\RenderPromotionResponse\RenderPromotionResponse;
-use Triniti\Schemas\Curator\Mixin\RenderWidgetResponse\RenderWidgetResponse;
 
 class RenderRequestInterceptor implements EventSubscriber
 {
-    /** @var CacheItemPoolInterface */
-    protected $cache;
+    protected CacheItemPoolInterface $cache;
 
     /**
      * If a render request that is cacheable occurs we'll store
@@ -28,32 +23,27 @@ class RenderRequestInterceptor implements EventSubscriber
      *
      * @var CacheItemInterface[]
      */
-    protected $cacheItems = [];
+    protected array $cacheItems = [];
 
-    /**
-     * @param CacheItemPoolInterface $cache
-     */
     public function __construct(CacheItemPoolInterface $cache)
     {
         $this->cache = $cache;
     }
 
-    /**
-     * @return array
-     */
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
-            'triniti:curator:mixin:render-promotion-request.before_handle' => 'onRenderPromotionRequestBeforeHandle',
-            'triniti:curator:mixin:render-promotion-response.created'      => 'onRenderResponseCreated',
-            'triniti:curator:mixin:render-widget-request.before_handle'    => 'onRenderWidgetRequestBeforeHandle',
-            'triniti:curator:mixin:render-widget-response.created'         => 'onRenderResponseCreated',
+            'triniti:curator:mixin:render-promotion-request.before_handle'   => 'onRenderPromotionRequestBeforeHandle', // deprecated
+            'triniti:curator:mixin:render-promotion-response.created'        => 'onRenderResponseCreated', // deprecated
+            'triniti:curator:mixin:render-widget-request.before_handle'      => 'onRenderWidgetRequestBeforeHandle', // deprecated
+            'triniti:curator:mixin:render-widget-response.created'           => 'onRenderResponseCreated', // deprecated
+            'triniti:curator:request:render-promotion-request.before_handle' => 'onRenderPromotionRequestBeforeHandle',
+            'triniti:curator:request:render-promotion-response.created'      => 'onRenderResponseCreated',
+            'triniti:curator:request:render-widget-request.before_handle'    => 'onRenderWidgetRequestBeforeHandle',
+            'triniti:curator:request:render-widget-response.created'         => 'onRenderResponseCreated',
         ];
     }
 
-    /**
-     * @param GetResponseEvent $pbjxEvent
-     */
     public function onRenderPromotionRequestBeforeHandle(GetResponseEvent $pbjxEvent): void
     {
         $request = $pbjxEvent->getRequest();
@@ -73,9 +63,6 @@ class RenderRequestInterceptor implements EventSubscriber
         $this->beforeHandle($pbjxEvent, $id);
     }
 
-    /**
-     * @param GetResponseEvent $pbjxEvent
-     */
     public function onRenderWidgetRequestBeforeHandle(GetResponseEvent $pbjxEvent): void
     {
         $request = $pbjxEvent->getRequest();
@@ -91,9 +78,6 @@ class RenderRequestInterceptor implements EventSubscriber
         $this->beforeHandle($pbjxEvent, (string)$widgetRef);
     }
 
-    /**
-     * @param ResponseCreatedEvent $pbjxEvent
-     */
     public function onRenderResponseCreated(ResponseCreatedEvent $pbjxEvent): void
     {
         $response = $pbjxEvent->getResponse();
@@ -105,10 +89,8 @@ class RenderRequestInterceptor implements EventSubscriber
         $cacheItem = $this->cacheItems[$requestId];
         unset($this->cacheItems[$requestId]);
 
-        /** @var Request $request */
         $request = $response->get('ctx_request');
-
-        /** @var RenderContext $context */
+        /** @var Message $context */
         $context = $request->get('context');
 
         if (!$context->get('cache_enabled')) {
@@ -119,15 +101,9 @@ class RenderRequestInterceptor implements EventSubscriber
         $this->cache->saveDeferred($cacheItem);
     }
 
-    /**
-     * @param GetResponseEvent $pbjxEvent
-     * @param string           $id
-     */
     protected function beforeHandle(GetResponseEvent $pbjxEvent, string $id): void
     {
         $request = $pbjxEvent->getRequest();
-
-        /** @var RenderContext $context */
         $context = $request->get('context');
 
         if (!$context->get('cache_enabled')) {
@@ -136,8 +112,12 @@ class RenderRequestInterceptor implements EventSubscriber
 
         $cacheItem = $this->cache->getItem($this->getCacheKey($id, $context));
         if ($cacheItem->isHit()) {
+            /** @var Message $response */
             $response = $cacheItem->get();
-            if ($response instanceof RenderPromotionResponse || $response instanceof RenderWidgetResponse) {
+            if (
+                $response::schema()->hasMixin('triniti:curator:mixin:render-promotion-response')
+                || $response::schema()->hasMixin('triniti:curator:mixin:render-widget-response')
+            ) {
                 /*
                 if ($response->isFrozen()) {
                     $response = clone $response;
@@ -159,12 +139,12 @@ class RenderRequestInterceptor implements EventSubscriber
      *
      * @link http://www.php-fig.org/psr/psr-6/#definitions
      *
-     * @param string        $id
-     * @param RenderContext $context
+     * @param string  $id
+     * @param Message $context
      *
      * @return string
      */
-    protected function getCacheKey(string $id, RenderContext $context): string
+    protected function getCacheKey(string $id, Message $context): string
     {
         $contextEtag = $context->generateEtag(['container']);
         $containerEtag = '';

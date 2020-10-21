@@ -24,6 +24,7 @@ final class NcrTeaserProjectorTest extends AbstractPbjxTest
     private InMemoryNcr $ncr;
     private NcrTeaserProjector $projector;
     private MockNcrSearch $ncrSearch;
+    private CacheItemPoolInterface $cache;
 
     public function setup(): void
     {
@@ -31,44 +32,7 @@ final class NcrTeaserProjectorTest extends AbstractPbjxTest
         $this->ncr = new InMemoryNcr();
         $this->ncrSearch = new MockNcrSearch();
         $this->pbjx = new MockPbjx($this->locator);
-        $this->cache = new class implements CacheItemPoolInterface {
-            public function clear()
-            {
-                // TODO: Implement clear() method.
-            }
-            public function commit()
-            {
-                // TODO: Implement commit() method.
-            }
-            public function deleteItem($key)
-            {
-                // TODO: Implement deleteItem() method.
-            }
-            public function deleteItems(array $keys)
-            {
-                // TODO: Implement deleteItems() method.
-            }
-            public function hasItem($key)
-            {
-                // TODO: Implement hasItem() method.
-            }
-            public function getItem($key)
-            {
-                // TODO: Implement getItem() method.
-            }
-            public function getItems(array $keys = array())
-            {
-                // TODO: Implement getItems() method.
-            }
-            public function save(CacheItemInterface $item)
-            {
-                // TODO: Implement save() method.
-            }
-            public function saveDeferred(CacheItemInterface $item)
-            {
-                // TODO: Implement saveDeferred() method.
-            }
-        };
+        $this->cache = new MockCache();
         $this->projector = new NcrTeaserProjector($this->ncr, $this->ncrSearch, $this->cache);
     }
 

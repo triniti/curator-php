@@ -5,27 +5,27 @@ namespace Triniti\Tests\Curator;
 
 use Acme\Schemas\Curator\Node\CodeWidgetV1;
 use Acme\Schemas\Curator\Request\RenderWidgetRequestV1;
-use Gdbots\Schemas\Ncr\NodeRef;
+use Gdbots\Ncr\Repository\InMemoryNcr;
+use Gdbots\Pbj\Message;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Triniti\Curator\RenderWidgetRequestHandler;
 use Triniti\Curator\Twig\CuratorExtension;
 use Triniti\Schemas\Common\RenderContextV1;
-use Triniti\Schemas\Curator\Mixin\RenderWidgetResponse\RenderWidgetResponse;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
 final class RenderWidgetRequestHandlerTest extends AbstractPbjxTest
 {
-    /** @var Environment */
-    private $twig;
-
-    /** @var RenderWidgetRequestHandler */
-    private $handler;
+    private Environment $twig;
+    private RenderWidgetRequestHandler $handler;
+    private InMemoryNcr $ncr;
 
     public function setup(): void
     {
         parent::setup();
 
+        $this->ncr = new InMemoryNcr();
         $loader = new FilesystemLoader(__DIR__ . '/Fixtures/templates/');
         $loader->addPath(realpath(__DIR__ . '/Fixtures/templates/'), 'curator_widgets');
         $this->twig = new Environment($loader, ['debug' => true]);
@@ -47,7 +47,7 @@ final class RenderWidgetRequestHandlerTest extends AbstractPbjxTest
             ->set('widget_ref', NodeRef::fromNode($widget))
             ->set('context', $context);
 
-        /** @var RenderWidgetResponse $response */
+        /** @var Message $response */
         $response = $this->handler->handleRequest($request, $this->pbjx);
 
         $actual = $response->get('html');

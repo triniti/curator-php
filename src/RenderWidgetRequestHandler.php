@@ -3,39 +3,24 @@ declare(strict_types=1);
 
 namespace Triniti\Curator;
 
+
 use Gdbots\Ncr\Ncr;
-use Gdbots\Ncr\PbjxHelperTrait;
 use Gdbots\Pbj\Message;
+use Gdbots\Pbj\MessageResolver;
 use Gdbots\Pbjx\Pbjx;
 use Gdbots\Pbjx\RequestHandler;
-use Gdbots\Pbjx\RequestHandlerTrait;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use Triniti\Schemas\Curator\Mixin\RenderWidgetRequest\RenderWidgetRequestV1Mixin;
-use Triniti\Schemas\Curator\Mixin\RenderWidgetResponse\RenderWidgetResponseV1Mixin;
+use Triniti\Schemas\Curator\Request\RenderWidgetResponseV1;
 use Twig\Environment;
 
 class RenderWidgetRequestHandler implements RequestHandler
 {
-    use RequestHandlerTrait;
-    use PbjxHelperTrait;
+    protected Ncr $ncr;
+    protected Environment $twig;
+    protected LoggerInterface $logger;
 
-    /** @var Ncr */
-    protected $ncr;
-
-    /** @var Environment */
-    protected $twig;
-
-    /** @var LoggerInterface */
-    protected $logger;
-
-    /**
-     * @param Ncr             $ncr
-     * @param Environment     $twig
-     * @param LoggerInterface $logger
-     */
     public function __construct(Ncr $ncr, Environment $twig, ?LoggerInterface $logger = null)
     {
         $this->ncr = $ncr;
@@ -43,16 +28,18 @@ class RenderWidgetRequestHandler implements RequestHandler
         $this->logger = $logger ?: new NullLogger();
     }
 
-    /**
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
-    protected function handle(Message $request, Pbjx $pbjx): Message
+    public static function handlesCuries(): array
     {
-        $response = $this->createRenderWidgetResponse($request, $pbjx);
-        $widget = $this->getWidget($request, $pbjx);
+        // deprecated mixins, will be removed in 3.x
+        $curies = MessageResolver::findAllUsingMixin('triniti:curator:mixin:render-widget-request', false);
+        $curies[] = 'triniti:curator:request:render-widget-request';
+        return $curies;
+    }
+
+    public function handleRequest(Message $request, Pbjx $pbjx): Message
+    {
+        $response = RenderWidgetResponseV1::create();
+        $widget = $this->getWidget($request);
 
         if (null === $widget) {
             return $response;
@@ -103,13 +90,91 @@ class RenderWidgetRequestHandler implements RequestHandler
 
         return $response->set('html', $html);
     }
+//    use RequestHandlerTrait;
+//    use PbjxHelperTrait;
+//
+//    /** @var Ncr */
+//    protected $ncr;
+//
+//    /** @var Environment */
+//    protected $twig;
+//
+//    /** @var LoggerInterface */
+//    protected $logger;
+//
+//    /**
+//     * @param Ncr             $ncr
+//     * @param Environment     $twig
+//     * @param LoggerInterface $logger
+//     */
+//    public function __construct(Ncr $ncr, Environment $twig, ?LoggerInterface $logger = null)
+//    {
+//        $this->ncr = $ncr;
+//        $this->twig = $twig;
+//        $this->logger = $logger ?: new NullLogger();
+//    }
+//
+//    /**
+//     * @param Message $request
+//     * @param Pbjx    $pbjx
+//     *
+//     * @return Message
+//     */
+//    protected function handle(Message $request, Pbjx $pbjx): Message
+//    {
+//        $response = $this->createRenderWidgetResponse($request, $pbjx);
+//        $widget = $this->getWidget($request, $pbjx);
+//
+//        if (null === $widget) {
+//            return $response;
+//        }
+//
+//        $searchResponse = $this->runWidgetSearchRequest($widget, $request, $pbjx);
+//
+//        /** @var Message $context */
+//        $context = $request->get('context');
+//
+//        if ('json' === $context->get('format')) {
+//            return $response->set('search_response', $searchResponse);
+//        }
+//
+//        $curie = $widget::schema()->getCurie();
+//        $widgetName = str_replace('-', '_', $curie->getMessage());
+//        $template = $this->findTemplate($context, $widgetName);
+//        $hasNodes = null !== $searchResponse ? $searchResponse->has('nodes') : false;
+//        try {
+//            $html = $this->twig->render($template, [
+//                'pbj'             => $widget,
+//                'pbj_name'        => $widgetName,
+//                'context'         => $context,
+//                'render_request'  => $request,
+//                'search_response' => $searchResponse,
+//                'has_nodes'       => $hasNodes,
+//                'device_view'     => $context->get('device_view'),
+//                'viewer_country'  => $context->get('viewer_country'),
+//            ]);
+//        } catch (\Throwable $e) {
+//            if ($this->twig->isDebug()) {
+//                throw $e;
+//            }
+//
+//            $this->logger->warning(
+//                'Unable to render [{curie}] with template [{twig_template}].',
+//                [
+//                    'exception'      => $e,
+//                    'curie'          => $curie->toString(),
+//                    'twig_template'  => $template,
+//                    'pbj'            => $widget->toArray(),
+//                    'render_context' => $context->toArray(),
+//                ]
+//            );
+//
+//            $html = null;
+//        }
+//
+//        return $response->set('html', $html);
+//    }
 
-    /**
-     * @param Message $context
-     * @param string  $widgetName
-     *
-     * @return string
-     */
     protected function findTemplate(Message $context, string $widgetName): string
     {
         $platform = $context->get('platform', 'web');
@@ -141,13 +206,7 @@ class RenderWidgetRequestHandler implements RequestHandler
         return "@curator_widgets/{$platform}/missing_widget{$format}.twig";
     }
 
-    /**
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
-    protected function getWidget(Message $request, Pbjx $pbjx): ?Message
+    protected function getWidget(Message $request): ?Message
     {
         if ($request->has('widget')) {
             return $request->get('widget');
@@ -158,12 +217,7 @@ class RenderWidgetRequestHandler implements RequestHandler
         }
 
         try {
-            $widget = $this->ncr->getNode(
-                $request->get('widget_ref'),
-                false,
-                $this->createNcrContext($request)
-            );
-            return $widget;
+            return $this->ncr->getNode($request->get('widget_ref'));
         } catch (\Throwable $e) {
             if ($this->twig->isDebug()) {
                 throw $e;
@@ -182,13 +236,6 @@ class RenderWidgetRequestHandler implements RequestHandler
         return null;
     }
 
-    /**
-     * @param Message $widget
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
     protected function runWidgetSearchRequest(Message $widget, Message $request, Pbjx $pbjx): ?Message
     {
         if (!$widget->has('search_request')) {
@@ -213,7 +260,7 @@ class RenderWidgetRequestHandler implements RequestHandler
          * widgets are, at the time of writing this, for the consumers so we only
          * want to include published content when running the search request.
          */
-        if ($searchRequest instanceof SearchNodesRequest) {
+        if ($searchRequest::schema()->hasMixin('gdbots:ncr:mixin:search-nodes-request')) {
             $searchRequest->set('status', NodeStatus::PUBLISHED());
         }
 
@@ -237,24 +284,24 @@ class RenderWidgetRequestHandler implements RequestHandler
         return null;
     }
 
-    /**
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
-    protected function createRenderWidgetResponse(Message $request, Pbjx $pbjx): Message
-    {
-        return RenderWidgetResponseV1Mixin::findOne()->createMessage();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function handlesCuries(): array
-    {
-        return [
-            RenderWidgetRequestV1Mixin::findOne()->getCurie(),
-        ];
-    }
+//    /**
+//     * @param Message $request
+//     * @param Pbjx    $pbjx
+//     *
+//     * @return Message
+//     */
+//    protected function createRenderWidgetResponse(Message $request, Pbjx $pbjx): Message
+//    {
+//        return RenderWidgetResponseV1Mixin::findOne()->createMessage();
+//    }
+//
+//    /**
+//     * {@inheritdoc}
+//     */
+//    public static function handlesCuries(): array
+//    {
+//        return [
+//            RenderWidgetRequestV1Mixin::findOne()->getCurie(),
+//        ];
+//    }
 }
