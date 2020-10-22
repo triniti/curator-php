@@ -25,7 +25,7 @@ use Triniti\Schemas\Curator\TeaserId;
 use Triniti\Schemas\News\ArticleId;
 use Triniti\Sys\Flags;
 
-final class SyncTeaserHandlerTest extends AbstractPbjxTest
+final class SyncTeaserHandlerTestOld extends AbstractPbjxTest
 {
     /**
      * Prepare the test.

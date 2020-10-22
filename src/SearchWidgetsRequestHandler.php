@@ -4,25 +4,37 @@ declare(strict_types=1);
 namespace Triniti\Curator;
 
 use Gdbots\Ncr\AbstractSearchNodesRequestHandler;
-use Gdbots\Pbj\Schema;
+use Gdbots\Pbj\Message;
+use Gdbots\Pbj\MessageResolver;
+use Gdbots\Pbj\SchemaCurie;
+use Gdbots\Pbjx\Pbjx;
 use Gdbots\QueryParser\ParsedQuery;
-use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
-use Triniti\Schemas\Curator\Mixin\SearchWidgetsRequest\SearchWidgetsRequestV1Mixin;
-use Triniti\Schemas\Curator\Mixin\Widget\WidgetV1Mixin;
+use Triniti\Schemas\Curator\Request\SearchWidgetsResponseV1;
 
 class SearchWidgetsRequestHandler extends AbstractSearchNodesRequestHandler
 {
-    /**
-     * {@inheritdoc}
-     */
-    protected function createQNamesForSearchNodes(SearchNodesRequest $request, ParsedQuery $parsedQuery): array
+    public static function handlesCuries(): array
     {
-        $validQNames = [];
+        // deprecated mixins, will be removed in 3.x
+        $curies = MessageResolver::findAllUsingMixin('triniti:curator:mixin:search-widgets-request');
+        $curies[] = 'triniti:curator:request:search-widgets-request';
+        return $curies;
+    }
 
-        /** @var Schema $schema */
-        foreach (WidgetV1Mixin::findAll() as $schema) {
-            $qname = $schema->getQName();
-            $validQNames[$qname->getMessage()] = $qname;
+    protected function createSearchNodesResponse(Message $request, Pbjx $pbjx): Message
+    {
+        return SearchWidgetsResponseV1::create();
+    }
+
+    protected function createQNamesForSearchNodes(Message $request, ParsedQuery $parsedQuery): array
+    {
+        static $validQNames = null;
+        if (null === $validQNames) {
+            $validQNames = [];
+            foreach (MessageResolver::findAllUsingMixin('triniti:curator:mixin:widget:v1', false) as $curie) {
+                $qname = SchemaCurie::fromString($curie)->getQName();
+                $validQNames[$qname->getMessage()] = $qname;
+            }
         }
 
         $qnames = [];
@@ -37,15 +49,5 @@ class SearchWidgetsRequestHandler extends AbstractSearchNodesRequestHandler
         }
 
         return $qnames;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function handlesCuries(): array
-    {
-        return [
-            SearchWidgetsRequestV1Mixin::findOne()->getCurie(),
-        ];
     }
 }

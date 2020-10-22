@@ -13,10 +13,8 @@ use Acme\Schemas\News\Event\ArticlePublishedV1;
 use Acme\Schemas\News\Node\ArticleV1;
 use Gdbots\Ncr\Repository\InMemoryNcr;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Triniti\Curator\NcrTeaserProjector;
-use Triniti\Curator\TeaserAggregate;
 use Triniti\Schemas\Curator\Command\RemoveTeaserSlottingV1;
 
 final class NcrTeaserProjectorTest extends AbstractPbjxTest

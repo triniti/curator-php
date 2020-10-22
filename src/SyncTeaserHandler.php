@@ -3,21 +3,16 @@ declare(strict_types=1);
 
 namespace Triniti\Curator;
 
-use Gdbots\Common\Util\StringUtils;
 use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
 use Gdbots\Pbj\SchemaCurie;
+use Gdbots\Pbj\Util\StringUtil;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\CommandHandler;
-use Gdbots\Pbjx\CommandHandlerTrait;
 use Gdbots\Pbjx\Pbjx;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Ncr\Mixin\Node\Node;
-use Gdbots\Schemas\Ncr\NodeRef;
 use Gdbots\Schemas\Pbjx\StreamId;
-use Triniti\Schemas\Curator\Mixin\SyncTeaser\SyncTeaser;
-use Triniti\Schemas\Curator\Mixin\Teaser\TeaserV1Mixin;
-use Triniti\Schemas\Curator\Mixin\TeaserHasTarget\TeaserHasTarget;
 use Triniti\Sys\Flags;
 
 class SyncTeaserHandler implements CommandHandler
@@ -26,7 +21,6 @@ class SyncTeaserHandler implements CommandHandler
     const AUTOCREATE_DISABLED_FLAG_NAME = 'teaser_autocreate_disabled';
     const AUTOCREATE_TYPE_DISABLED_FLAG_NAME = 'teaser_autocreate_%s_disabled';
 
-    use CommandHandlerTrait;
     use SyncTeaserTrait;
 
     protected Flags $flags;
@@ -39,23 +33,14 @@ class SyncTeaserHandler implements CommandHandler
         $this->transformer = $transformer;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public static function handlesCuries(): array
     {
-        $schema = TeaserV1Mixin::findAll()[0];
-        $curie = $schema->getCurie();
-        return [
-            SchemaCurie::fromString("{$curie->getVendor()}:{$curie->getPackage()}:command:sync-teaser"),
-        ];
+        $curies = MessageResolver::findAllUsingMixin('triniti:curator:mixin:sync-teaser:v1', false);
+        $curies[] = 'triniti:curator:command:sync-teaser';
+        return $curies;
     }
 
-    /**
-     * @param SyncTeaser $command
-     * @param Pbjx       $pbjx
-     */
-    protected function handle(SyncTeaser $command, Pbjx $pbjx): void
+    public function handleCommand(Message $command, Pbjx $pbjx): void
     {
         if ($this->flags->getBoolean(self::DISABLED_FLAG_NAME)) {
             return;
@@ -71,14 +56,9 @@ class SyncTeaserHandler implements CommandHandler
         }
     }
 
-    /**
-     * @param Node $node
-     *
-     * @return bool
-     */
-    protected function isNodeSupported(Node $node): bool
+    protected function isNodeSupported(Message $node): bool
     {
-        return $node instanceof TeaserHasTarget;
+        return $node::schema()->hasMixin('triniti:curator:mixin:teaser-has-target');
     }
 
     /**
@@ -90,7 +70,7 @@ class SyncTeaserHandler implements CommandHandler
      * @param SyncTeaser $command
      * @param Pbjx       $pbjx
      */
-    protected function handleSyncByTargetRef(SyncTeaser $command, Pbjx $pbjx): void
+    protected function handleSyncByTargetRef(Message $command, Pbjx $pbjx): void
     {
         /** @var NodeRef $targetRef */
         $targetRef = $command->get('target_ref');
@@ -108,7 +88,7 @@ class SyncTeaserHandler implements CommandHandler
 
         $typeDisabledFlag = sprintf(
             self::AUTOCREATE_TYPE_DISABLED_FLAG_NAME,
-            StringUtils::toSnakeFromSlug($target::schema()->getQName()->getMessage())
+            StringUtil::toSnakeFromSlug($target::schema()->getQName()->getMessage())
         );
 
         if ($this->flags->getBoolean($typeDisabledFlag)) {
@@ -148,7 +128,7 @@ class SyncTeaserHandler implements CommandHandler
             ->set('last_event_ref', $event->generateMessageRef());
 
         $teaserRef = NodeRef::fromNode($teaser);
-        $streamId = StreamId::fromString(sprintf('%s.history:%s', $teaserRef->getLabel(), $teaserRef->getId()));
+        $streamId = StreamId::fromString(sprintf('%s:%s:%s', $teaserRef->getVendor(), $teaserRef->getLabel(), $teaserRef->getId()));
         $pbjx->getEventStore()->putEvents($streamId, [$event]);
     }
 
@@ -170,12 +150,6 @@ class SyncTeaserHandler implements CommandHandler
         $this->updateTeasers($command, $pbjx, [$teaser], $target);
     }
 
-    /**
-     * @param Message   $causator
-     * @param Pbjx      $pbjx
-     * @param Message[] $teasers
-     * @param Message   $target
-     */
     protected function updateTeasers(Message $causator, Pbjx $pbjx, array $teasers, Message $target): void
     {
         static $class = null;

@@ -34,74 +34,13 @@ use Triniti\Schemas\Curator\Command\SyncTeaserV1;
 
 final class TeaserableWatcherTest extends AbstractPbjxTest
 {
+    private MockNcr $ncr;
+
     public function setup(): void
     {
         parent::setup();
         $this->pbjx = new MockPbjx($this->locator);
-        $this->ncr = new class implements Ncr {
-            private array $nodes = [];
-
-            public function createStorage(SchemaQName $qname, array $context = []): void
-            {
-                // TODO: Implement createStorage() method.
-            }
-
-            public function deleteNode(NodeRef $nodeRef, array $context = []): void
-            {
-                // TODO: Implement deleteNode() method.
-            }
-
-            public function describeStorage(SchemaQName $qname, array $context = []): string
-            {
-                // TODO: Implement describeStorage() method.
-            }
-
-            public function findNodeRefs(IndexQuery $query, array $context = []): IndexQueryResult
-            {
-                return new IndexQueryResult(new IndexQuery(SchemaQName::fromString('a:b'), 'alias', 'value'), array_keys($this->nodes));
-            }
-
-            public function getNode(NodeRef $nodeRef, bool $consistent = false, array $context = []): Message
-            {
-                if (!$this->hasNode($nodeRef)) {
-                    throw NodeNotFound::forNodeRef($nodeRef);
-                }
-
-                $node = $this->nodes[$nodeRef->toString()];
-                if ($node->isFrozen()) {
-                    $node = $this->nodes[$nodeRef->toString()] = clone $node;
-                }
-
-                return $node;
-            }
-
-            public function getNodes(array $nodeRefs, bool $consistent = false, array $context = []): array
-            {
-                return array_filter($this->nodes, function (Message $node) {
-                    return $this->hasNode($node->generateNodeRef());
-                });
-            }
-
-            public function hasNode(NodeRef $nodeRef, bool $consistent = false, array $context = []): bool
-            {
-                return isset($this->nodes[$nodeRef->toString()]);
-            }
-
-            public function pipeNodeRefs(SchemaQName $qname, array $context = []): \Generator
-            {
-                // TODO: Implement pipeNodeRefs() method.
-            }
-
-            public function pipeNodes(SchemaQName $qname, array $context = []): \Generator
-            {
-                // TODO: Implement pipeNodes() method.
-            }
-
-            public function putNode(Message $node, ?string $expectedEtag = null, array $context = []): void
-            {
-                $this->nodes[$node->generateNodeRef()->toString()] = $node;
-            }
-        };
+        $this->ncr = new MockNcr();
     }
 
     public function testOnNodeCreated(): void

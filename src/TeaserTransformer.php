@@ -3,12 +3,11 @@ declare(strict_types=1);
 
 namespace Triniti\Curator;
 
-use Gdbots\Common\Util\stringUtils;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
 use Gdbots\Pbj\SchemaCurie;
-use Gdbots\Schemas\Ncr\NodeRef;
-use Triniti\Schemas\Canvas\Mixin\TextBlock\TextBlock;
+use Gdbots\Pbj\Util\StringUtil;
+use Gdbots\Pbj\WellKnown\NodeRef;
 
 /**
  * Util for applying field values from a teaserable to a teaser. Useful for
@@ -35,10 +34,12 @@ class TeaserTransformer
         $teaser->set('target_ref', $targetRef);
 
         foreach ($target::schema()->getMixins() as $mixin) {
-            $message = $mixin->getId()->getMessage();
-            $method = sprintf('transform%s', StringUtils::toCamelFromSlug($message));
-            if (method_exists(static::class, $method)) {
-                static::$method($target, $teaser);
+            if (1 === preg_match(SchemaCurie::VALID_PATTERN, $mixin)) {
+                $message = SchemaCurie::fromString($mixin)->getMessage();
+                $method = sprintf('transform%s', StringUtil::toCamelFromSlug($message));
+                if (method_exists(static::class, $method)) {
+                    static::$method($target, $teaser);
+                }
             }
         }
 
@@ -109,8 +110,12 @@ class TeaserTransformer
         $description = $target->get('description', $target->get('meta_description'));
 
         if (empty($description) && $target->has('blocks')) {
+            /** @var Message $block */
             foreach ($target->get('blocks') as $block) {
-                if ($block instanceof TextBlock && $block->has('text')) {
+                if (
+                    $block::schema()->hasMixin('triniti:canvas:mixin:text-block')
+                    && $block->has('text')
+                ) {
                     $description = strip_tags($block->get('text'));
                     break;
                 }
