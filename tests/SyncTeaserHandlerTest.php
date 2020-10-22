@@ -10,6 +10,7 @@ use Acme\Schemas\News\Node\ArticleV1;
 use Gdbots\Ncr\Repository\InMemoryNcr;
 use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
+use Gdbots\Schemas\Ncr\Event\NodeCreatedV1;
 use Triniti\Curator\SyncTeaserHandler;
 use Triniti\Curator\TeaserTransformer;
 use Triniti\Sys\Flags;
@@ -30,7 +31,7 @@ final class SyncTeaserHandlerTest extends AbstractPbjxTest
         $syncTeaserHandler->handleCommand($command, $this->pbjx);
 
         foreach ($this->pbjx->getEventStore()->pipeAllEvents() as [$event, $streamId]) {
-            $this->assertTrue($event instanceof TeaserCreatedV1);
+            $this->assertTrue($event instanceof NodeCreatedV1);
             $this->assertTrue($event->get('node')->get('target_ref')->equals($article->generateNodeRef()));
         }
     }

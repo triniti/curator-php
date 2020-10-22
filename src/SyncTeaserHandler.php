@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Triniti\Curator;
 
+use Gdbots\Ncr\AggregateResolver;
 use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
@@ -110,26 +111,28 @@ class SyncTeaserHandler implements CommandHandler
             return;
         }
 
-        static $class = null;
-        if (null === $class) {
-            $class = MessageResolver::resolveCurie(
-                SchemaCurie::fromString("{$targetRef->getVendor()}:curator:event:teaser-created")
+        static $commandClass = null;
+        if (null === $commandClass) {
+            $vendor = MessageResolver::getDefaultVendor();
+            $commandClass = MessageResolver::resolveCurie(
+                SchemaCurie::fromString("{$vendor}:curator:command:create-teaser")
             );
         }
 
         $teaser = $this->transformer::transform($target);
-        $event = $class::create()->set('node', $teaser);
-        $pbjx->copyContext($command, $event);
+        $createCommand = $commandClass::create()->set('node', $teaser);
+        $pbjx->copyContext($command, $createCommand);
         $teaser
             ->clear('updated_at')
             ->clear('updater_ref')
-            ->set('created_at', $event->get('occurred_at'))
-            ->set('creator_ref', $event->get('ctx_user_ref', $target->get('updater_ref', $target->get('creator_ref'))))
-            ->set('last_event_ref', $event->generateMessageRef());
+            ->set('created_at', $command->get('occurred_at'))
+            ->set('creator_ref', $command->get('ctx_user_ref', $target->get('updater_ref', $target->get('creator_ref'))))
+            ->set('last_event_ref', $command->generateMessageRef());
 
-        $teaserRef = NodeRef::fromNode($teaser);
-        $streamId = StreamId::fromString(sprintf('%s:%s:%s', $teaserRef->getVendor(), $teaserRef->getLabel(), $teaserRef->getId()));
-        $pbjx->getEventStore()->putEvents($streamId, [$event]);
+        $aggregate = AggregateResolver::resolve($teaser->generateNodeRef()->getQName())::fromNode($teaser, $pbjx);
+        $aggregate->sync(['causator' => $command]);
+        $aggregate->createNode($createCommand);
+        $aggregate->commit();
     }
 
     /**
