@@ -3,18 +3,25 @@ declare(strict_types=1);
 
 namespace Triniti\Curator;
 
+use Gdbots\Ncr\AggregateResolver;
+use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
 use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\CommandHandler;
 use Gdbots\Pbjx\Pbjx;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Pbjx\StreamId;
-use Triniti\Schemas\Curator\Event\TeaserSlottingRemovedV1;
 use Triniti\Schemas\Curator\Request\SearchTeasersRequestV1;
 
 class RemoveTeaserSlottingHandler implements CommandHandler
 {
+    protected Ncr $ncr;
+
+    public function __construct(Ncr $ncr)
+    {
+        $this->ncr = $ncr;
+    }
+
     public static function handlesCuries(): array
     {
         // deprecated mixins, will be removed in 3.x
@@ -49,26 +56,12 @@ class RemoveTeaserSlottingHandler implements CommandHandler
                 continue;
             }
 
-            $event = $this->createTeaserSlottingRemoved($command, $pbjx);
-            $event->set('node_ref', $nodeRef);
-            $slottingKeys = [];
-
-            foreach ($command->get('slotting') as $key => $value) {
-                $currentSlot = $node->getFromMap('slotting', $key, 0);
-                if ($currentSlot === $value) {
-                    $slottingKeys[] = $key;
-                }
-            }
-
-            if (empty($slottingKeys)) {
-                continue;
-            }
-
-            $event->addToSet('slotting_keys', $slottingKeys);
-            $pbjx->getEventStore()->putEvents(
-                StreamId::fromString(sprintf('%s:%s:%s', $nodeRef->getVendor(), $nodeRef->getLabel(), $nodeRef->getId())),
-                [$event],
-            );
+            $context = ['causator' => $command];
+            /** @var TeaserAggregate $aggregate */
+            $aggregate = AggregateResolver::resolve($nodeRef->getQName())::fromNode($node, $pbjx);
+            $aggregate->sync($context);
+            $aggregate->removeTeaserSlotting($command);
+            $aggregate->commit();
         }
     }
 
@@ -77,12 +70,5 @@ class RemoveTeaserSlottingHandler implements CommandHandler
         $request = SearchTeasersRequestV1::create();
         $pbjx->copyContext($command, $request);
         return $request;
-    }
-
-    protected function createTeaserSlottingRemoved(Message $command, Pbjx $pbjx): Message
-    {
-        $event = TeaserSlottingRemovedV1::create();
-        $pbjx->copyContext($command, $event);
-        return $event;
     }
 }

@@ -6,7 +6,6 @@ namespace Triniti\Curator;
 use Gdbots\Ncr\Aggregate;
 use Gdbots\Pbj\Message;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Schemas\Curator\Event\GalleryImageCountUpdatedV1;
 use Triniti\Schemas\Dam\Request\SearchAssetsRequestV1;
 
@@ -22,10 +21,7 @@ class GalleryAggregate extends Aggregate
         $event = $this->createGalleryImageCountUpdated($command)
             ->set('node_ref', $this->nodeRef)
             ->set('image_count', $imageCount);
-        $this->pbjx->getEventStore()->putEvents(
-            StreamId::fromString(sprintf('%s:%s:%s', $this->nodeRef->getVendor(), $this->nodeRef->getLabel(), $this->nodeRef->getId())),
-            [$event]
-        );
+        $this->recordEvent($event);
     }
 
     protected function getImageCount(Message $command): int
