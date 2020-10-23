@@ -111,23 +111,22 @@ class SyncTeaserHandler implements CommandHandler
             return;
         }
 
-        static $commandClass = null;
-        if (null === $commandClass) {
+        static $class = null;
+        if (null === $class) {
             $vendor = MessageResolver::getDefaultVendor();
-            $commandClass = MessageResolver::resolveCurie(
+            $class = MessageResolver::resolveCurie(
                 SchemaCurie::fromString("{$vendor}:curator:command:create-teaser")
             );
         }
 
         $teaser = $this->transformer::transform($target);
-        $createCommand = $commandClass::create()->set('node', $teaser);
+        $createCommand = $class::create()->set('node', $teaser);
         $pbjx->copyContext($command, $createCommand);
         $teaser
             ->clear('updated_at')
             ->clear('updater_ref')
             ->set('created_at', $command->get('occurred_at'))
-            ->set('creator_ref', $command->get('ctx_user_ref', $target->get('updater_ref', $target->get('creator_ref'))))
-            ->set('last_event_ref', $command->generateMessageRef());
+            ->set('creator_ref', $command->get('ctx_user_ref', $target->get('updater_ref', $target->get('creator_ref'))));
 
         $aggregate = AggregateResolver::resolve($teaser->generateNodeRef()->getQName())::fromNode($teaser, $pbjx);
         $aggregate->sync(['causator' => $command]);
@@ -153,38 +152,43 @@ class SyncTeaserHandler implements CommandHandler
         $this->updateTeasers($command, $pbjx, [$teaser], $target);
     }
 
-    protected function updateTeasers(Message $causator, Pbjx $pbjx, array $teasers, Message $target): void
+    protected function updateTeasers(Message $command, Pbjx $pbjx, array $teasers, Message $target): void
     {
-        static $class = null;
-        if (null === $class) {
-            $class = MessageResolver::resolveCurie(
-                SchemaCurie::fromString("{$causator::schema()->getCurie()->getVendor()}:curator:event:teaser-updated")
-            );
-        }
+//        static $class = null;
+//        if (null === $class) {
+//            $class = MessageResolver::resolveCurie(
+//                SchemaCurie::fromString("{$command::schema()->getCurie()->getVendor()}:curator:event:teaser-updated")
+//            );
+//        }
 
         foreach ($teasers as $teaser) {
             $nodeRef = NodeRef::fromNode($teaser);
             $newTeaser = $this->transformer::transform($target, (clone $teaser));
-            $event = $class::create()
-                ->set('node_ref', $nodeRef)
-                ->set('old_node', $teaser)
-                ->set('new_node', $newTeaser);
-            $pbjx->copyContext($causator, $event);
+//            $event = $class::create()
+//                ->set('node_ref', $nodeRef)
+//                ->set('old_node', $teaser)
+//                ->set('new_node', $newTeaser);
+//            $pbjx->copyContext($command, $event);
 
             $newTeaser
-                ->set('updated_at', $event->get('occurred_at'))
-                ->set('updater_ref', $event->get('ctx_user_ref', $target->get('updater_ref')))
-                ->set('last_event_ref', $event->generateMessageRef());
+                ->set('updated_at', $command->get('occurred_at'))
+                ->set('updater_ref', $command->get('ctx_user_ref', $target->get('updater_ref')));
 
-            $pbjx->triggerLifecycle($event);
-            $event->freeze();
+            /** @var TeaserAggregate $aggregate */
+            $aggregate = AggregateResolver::resolve($teaser->generateNodeRef()->getQName())::fromNode($teaser, $pbjx);
+            $aggregate->sync(['causator' => $command]);
+            $aggregate->syncTeaser($command, $newTeaser);
+            $aggregate->commit();
 
-            if ($event->get('old_etag') === $event->get('new_etag')) {
-                continue;
-            }
-
-            $streamId = StreamId::fromString(sprintf('%s.history:%s', $nodeRef->getLabel(), $nodeRef->getId()));
-            $pbjx->getEventStore()->putEvents($streamId, [$event]);
+//            $pbjx->triggerLifecycle($event);
+//            $event->freeze();
+//
+//            if ($event->get('old_etag') === $event->get('new_etag')) {
+//                continue;
+//            }
+//
+//            $streamId = StreamId::fromString(sprintf('%s.history:%s', $nodeRef->getLabel(), $nodeRef->getId()));
+//            $pbjx->getEventStore()->putEvents($streamId, [$event]);
         }
     }
 

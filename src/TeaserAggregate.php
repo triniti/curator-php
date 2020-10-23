@@ -5,6 +5,7 @@ namespace Triniti\Curator;
 
 use Gdbots\Ncr\Aggregate;
 use Gdbots\Pbj\Message;
+use Gdbots\Schemas\Ncr\Event\NodeUpdatedV1;
 use Triniti\Schemas\Curator\Event\TeaserSlottingRemovedV1;
 
 class TeaserAggregate extends Aggregate
@@ -27,6 +28,24 @@ class TeaserAggregate extends Aggregate
         }
 
         $event->addToSet('slotting_keys', $slottingKeys);
+        $this->recordEvent($event);
+    }
+
+    public function syncTeaser(Message $command, Message $newTeaser): void
+    {
+        $oldETag = static::generateEtag($this->node);
+        $newETag = static::generateEtag($newTeaser);
+        if ($oldETag === $newETag) {
+            return;
+        }
+
+        $event = NodeUpdatedV1::create()
+            ->set('node_ref', $this->nodeRef)
+            ->set('old_node', $this->node)
+            ->set('old_etag', $oldETag)
+            ->set('new_node', $newTeaser)
+            ->set('new_etag', $newETag);
+        $this->pbjx->copyContext($command, $event);
         $this->recordEvent($event);
     }
 
