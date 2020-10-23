@@ -6,31 +6,24 @@ namespace Triniti\Curator\Twig;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\Serializer\PhpArraySerializer;
 use Gdbots\Pbj\Serializer\Serializer;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\Pbjx;
-use Gdbots\Schemas\Ncr\NodeRef;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Triniti\Schemas\Common\RenderContextV1;
-use Triniti\Schemas\Curator\Mixin\RenderPromotionRequest\RenderPromotionRequestV1Mixin;
-use Triniti\Schemas\Curator\Mixin\RenderWidgetRequest\RenderWidgetRequestV1Mixin;
+use Triniti\Schemas\Curator\Request\RenderPromotionRequestV1;
+use Triniti\Schemas\Curator\Request\RenderWidgetRequestV1;
 use Twig\Environment;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 final class CuratorExtension extends AbstractExtension
 {
-    /** @var PhpArraySerializer */
-    private static $serializer;
-
-    /** @var Pbjx */
-    private $pbjx;
-
-    /** @var RequestStack */
-    private $requestStack;
-
-    /** @var LoggerInterface */
-    private $logger;
+    private static PhpArraySerializer $serializer;
+    private Pbjx $pbjx;
+    private RequestStack $requestStack;
+    private LoggerInterface $logger;
 
     /**
      * @param Pbjx            $pbjx
@@ -44,9 +37,6 @@ final class CuratorExtension extends AbstractExtension
         $this->logger = $logger ?: new NullLogger();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getFunctions()
     {
         return [
@@ -65,14 +55,6 @@ final class CuratorExtension extends AbstractExtension
     }
 
     /**
-     * @return string
-     */
-    public function getName()
-    {
-        return 'triniti_curator_extension';
-    }
-
-    /**
      * @param Environment                  $twig
      * @param Message|NodeRef|array|string $widget
      * @param Message|array                $context
@@ -84,8 +66,7 @@ final class CuratorExtension extends AbstractExtension
     public function renderWidget(Environment $twig, $widget, $context = [], bool $returnResponse = false)
     {
         try {
-            /** @var Message $request */
-            $request = RenderWidgetRequestV1Mixin::findOne()->createMessage();
+            $request = RenderWidgetRequestV1::create();
 
             if (!$context instanceof Message) {
                 $container = $context['container'] ?? null;
@@ -154,8 +135,7 @@ final class CuratorExtension extends AbstractExtension
     public function renderPromotion(Environment $twig, string $slot, $context = [], bool $returnResponse = false)
     {
         try {
-            /** @var Message $request */
-            $request = RenderPromotionRequestV1Mixin::findOne()->createMessage();
+            $request = RenderPromotionRequestV1::create();
 
             if (!$context instanceof Message) {
                 $container = $context['container'] ?? null;
@@ -225,9 +205,6 @@ final class CuratorExtension extends AbstractExtension
         return null;
     }
 
-    /**
-     * @param Message $context
-     */
     private function enrichContext(Message $context): void
     {
         if ($context->isFrozen()) {
