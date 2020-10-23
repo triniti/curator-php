@@ -5,13 +5,13 @@ namespace Gdbots\Tests\Common;
 use Acme\Schemas\Canvas\Block\TextBlockV1;
 use Acme\Schemas\Curator\Node\ArticleTeaserV1;
 use Acme\Schemas\News\Node\ArticleV1;
-use Gdbots\Schemas\Ncr\NodeRef;
+use Gdbots\Pbj\WellKnown\NodeRef;
 use PHPUnit\Framework\TestCase;
 use Triniti\Curator\TeaserTransformer;
 
 class TeaserTransformerTest extends TestCase
 {
-    private $simpleFieldNames = [
+    private array $simpleFieldNames = [
         'ads_enabled',
         'expires_at',
         'is_unlisted',
@@ -22,7 +22,7 @@ class TeaserTransformerTest extends TestCase
         'title',
     ];
 
-    private $refFieldNames = [
+    private array $refFieldNames = [
         'channel_ref',
         'image_ref',
         'seo_image_ref',
