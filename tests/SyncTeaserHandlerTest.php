@@ -66,4 +66,89 @@ final class SyncTeaserHandlerTest extends AbstractPbjxTest
             }
         }
     }
+
+    public function testHandleSyncByTargetRefWithTeasersMixedSync(): void
+    {
+        $ncr = new MockNcr();
+        $article = ArticleV1::create()
+            ->set('title', 'article title')
+            ->set('status', NodeStatus::create('published'));
+        $teaser1 = ArticleTeaserV1::create()
+            ->set('target_ref', NodeRef::fromNode($article))
+            ->set('sync_with_target', true)
+            ->set('title', 'teaser title 1');
+        $teaser2 = ArticleTeaserV1::create()
+            ->set('target_ref', NodeRef::fromNode($article))
+            ->set('sync_with_target', false)
+            ->set('title', 'teaser title 2');
+        $ncr->putNode($article);
+        $ncr->putNode($teaser1);
+        $ncr->putNode($teaser2);
+
+        $command = SyncTeaserV1::create()->set('target_ref', NodeRef::fromNode($article));
+        $syncTeaserHandler = new SyncTeaserHandler($ncr, new Flags($ncr, 'acme:flagset:test'), new TeaserTransformer());
+        $syncTeaserHandler->handleCommand($command, $this->pbjx);
+
+        foreach ($this->pbjx->getEventStore()->pipeEvents(StreamId::fromNodeRef($teaser1->generateNodeRef())) as $event) {
+            $this->assertTrue($event instanceof NodeUpdatedV1);
+            $this->assertTrue($event->get('node_ref')->equals($teaser1->generateNodeRef()));
+            $this->assertSame('article title', $event->get('new_node')->get('title'));
+        }
+
+        $teaser2EventCount = 0;
+        foreach ($this->pbjx->getEventStore()->pipeEvents(StreamId::fromNodeRef($teaser2->generateNodeRef())) as $event) {
+            $teaser2EventCount++;
+        }
+        $this->assertSame(0, $teaser2EventCount);
+    }
+
+    public function testHandleSyncByTeaserRef(): void
+    {
+        $ncr = new MockNcr();
+        $article = ArticleV1::create()
+            ->set('title', 'article title')
+            ->set('status', NodeStatus::create('deleted'));
+
+        $teaser = ArticleTeaserV1::create()
+            ->set('target_ref', NodeRef::fromNode($article))
+            ->set('sync_with_target', false)
+            ->set('title', 'teaser title 1');
+
+        $ncr->putNode($article);
+        $ncr->putNode($teaser);
+
+        $command = SyncTeaserV1::create()->set('teaser_ref', NodeRef::fromNode($teaser));
+        $syncTeaserHandler = new SyncTeaserHandler($ncr, new Flags($ncr, 'acme:flagset:test'), new TeaserTransformer());
+        $syncTeaserHandler->handleCommand($command, $this->pbjx);
+
+        foreach ($this->pbjx->getEventStore()->pipeEvents(StreamId::fromNodeRef($teaser->generateNodeRef())) as $event) {
+            $this->assertTrue($event instanceof NodeUpdatedV1);
+            $this->assertTrue($event->get('node_ref')->equals($teaser->generateNodeRef()));
+            $this->assertSame('article title', $event->get('new_node')->get('title'));
+        }
+    }
+
+    public function testDontSyncIfEtagIdentical(): void
+    {
+        $ncr = new MockNcr();
+        $article = ArticleV1::create()
+            ->set('title', 'article title');
+
+        $teaser = ArticleTeaserV1::create()
+            ->set('target_ref', NodeRef::fromNode($article))
+            ->set('title', 'article title');
+
+        $ncr->putNode($article);
+        $ncr->putNode($teaser);
+
+        $command = SyncTeaserV1::create()->set('teaser_ref', NodeRef::fromNode($teaser));
+        $syncTeaserHandler = new SyncTeaserHandler($ncr, new Flags($ncr, 'acme:flagset:test'), new TeaserTransformer());
+        $syncTeaserHandler->handleCommand($command, $this->pbjx);
+
+        $eventCount = 0;
+        foreach ($this->pbjx->getEventStore()->pipeEvents(StreamId::fromNodeRef($teaser->generateNodeRef())) as $event) {
+            $eventCount++;
+        }
+        $this->assertSame(0, $eventCount);
+    }
 }

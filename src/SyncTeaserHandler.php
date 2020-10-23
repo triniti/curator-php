@@ -13,7 +13,6 @@ use Gdbots\Pbj\WellKnown\NodeRef;
 use Gdbots\Pbjx\CommandHandler;
 use Gdbots\Pbjx\Pbjx;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
-use Gdbots\Schemas\Pbjx\StreamId;
 use Triniti\Sys\Flags;
 
 class SyncTeaserHandler implements CommandHandler
@@ -154,22 +153,8 @@ class SyncTeaserHandler implements CommandHandler
 
     protected function updateTeasers(Message $command, Pbjx $pbjx, array $teasers, Message $target): void
     {
-//        static $class = null;
-//        if (null === $class) {
-//            $class = MessageResolver::resolveCurie(
-//                SchemaCurie::fromString("{$command::schema()->getCurie()->getVendor()}:curator:event:teaser-updated")
-//            );
-//        }
-
         foreach ($teasers as $teaser) {
-            $nodeRef = NodeRef::fromNode($teaser);
             $newTeaser = $this->transformer::transform($target, (clone $teaser));
-//            $event = $class::create()
-//                ->set('node_ref', $nodeRef)
-//                ->set('old_node', $teaser)
-//                ->set('new_node', $newTeaser);
-//            $pbjx->copyContext($command, $event);
-
             $newTeaser
                 ->set('updated_at', $command->get('occurred_at'))
                 ->set('updater_ref', $command->get('ctx_user_ref', $target->get('updater_ref')));
@@ -179,16 +164,6 @@ class SyncTeaserHandler implements CommandHandler
             $aggregate->sync(['causator' => $command]);
             $aggregate->syncTeaser($command, $newTeaser);
             $aggregate->commit();
-
-//            $pbjx->triggerLifecycle($event);
-//            $event->freeze();
-//
-//            if ($event->get('old_etag') === $event->get('new_etag')) {
-//                continue;
-//            }
-//
-//            $streamId = StreamId::fromString(sprintf('%s.history:%s', $nodeRef->getLabel(), $nodeRef->getId()));
-//            $pbjx->getEventStore()->putEvents($streamId, [$event]);
         }
     }
 

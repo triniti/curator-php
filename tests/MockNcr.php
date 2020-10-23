@@ -11,6 +11,10 @@ use Gdbots\Pbj\Message;
 use Gdbots\Pbj\SchemaQName;
 use Gdbots\Pbj\WellKnown\NodeRef;
 
+/**
+ * Naive alternative to the InMemoryNcr which does not handle DynamoDB aliasing in the same way.
+ * Example: a query built using the alias 'target' when our search field is 'target_ref'.
+ */
 final class MockNcr implements Ncr {
     private array $nodes = [];
 
