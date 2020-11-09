@@ -2,6 +2,11 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.5
+* Add `curator_find_promotion` and `curator_render_promotion_slots` twig functions.
+* Implement rendering of a promotion's `slots` in `RenderPromotionRequestHandler`.
+
+
 ## v1.4.4
 * In `SyncTeaserHandler::shouldAutoCreateTeaser` just auto create for article, gallery and video by default.
 * In `NcrGalleryProjector` also update image counts when assets are deleted or expired.

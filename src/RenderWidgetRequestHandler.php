@@ -13,6 +13,7 @@ use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Gdbots\Schemas\Ncr\Mixin\SearchNodesRequest\SearchNodesRequest;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Triniti\Schemas\Curator\Enum\SlotRendering;
 use Triniti\Schemas\Curator\Mixin\RenderWidgetRequest\RenderWidgetRequestV1Mixin;
 use Triniti\Schemas\Curator\Mixin\RenderWidgetResponse\RenderWidgetResponseV1Mixin;
 use Twig\Environment;
@@ -31,11 +32,13 @@ class RenderWidgetRequestHandler implements RequestHandler
     /** @var LoggerInterface */
     protected $logger;
 
-    /**
-     * @param Ncr             $ncr
-     * @param Environment     $twig
-     * @param LoggerInterface $logger
-     */
+    public static function handlesCuries(): array
+    {
+        return [
+            RenderWidgetRequestV1Mixin::findOne()->getCurie(),
+        ];
+    }
+
     public function __construct(Ncr $ncr, Environment $twig, ?LoggerInterface $logger = null)
     {
         $this->ncr = $ncr;
@@ -43,25 +46,22 @@ class RenderWidgetRequestHandler implements RequestHandler
         $this->logger = $logger ?: new NullLogger();
     }
 
-    /**
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
     protected function handle(Message $request, Pbjx $pbjx): Message
     {
-        $response = $this->createRenderWidgetResponse($request, $pbjx);
+        $response = RenderWidgetResponseV1Mixin::findOne()->createMessage();
         $widget = $this->getWidget($request, $pbjx);
 
         if (null === $widget) {
             return $response;
         }
 
-        $searchResponse = $this->runWidgetSearchRequest($widget, $request, $pbjx);
-
         /** @var Message $context */
         $context = $request->get('context');
+        $rendering = $context->getFromMap('strings', 'rendering', SlotRendering::SERVER);
+
+        $searchResponse = $rendering === SlotRendering::SERVER
+            ? $this->runWidgetSearchRequest($widget, $request, $pbjx)
+            : null;
 
         if ('json' === $context->get('format')) {
             return $response->set('search_response', $searchResponse);
@@ -104,31 +104,34 @@ class RenderWidgetRequestHandler implements RequestHandler
         return $response->set('html', $html);
     }
 
-    /**
-     * @param Message $context
-     * @param string  $widgetName
-     *
-     * @return string
-     */
     protected function findTemplate(Message $context, string $widgetName): string
     {
         $platform = $context->get('platform', 'web');
         $deviceView = $context->get('device_view', '');
         $format = $context->has('format') ? ".{$context->get('format')}" : '';
+        $rendering = $context->getFromMap('strings', 'rendering', SlotRendering::SERVER);
+        $rendering = $rendering !== SlotRendering::SERVER ? ".{$rendering}" : '';
         $templates = [];
 
         if ($context->has('section')) {
             $section = strtolower(str_replace('-', '_', $context->get('section')));
             if ($context->has('device_view')) {
-                $templates[] = "{$section}/{$widgetName}/{$widgetName}.{$deviceView}";
+                $templates[] = "{$section}/{$widgetName}/{$widgetName}{$rendering}.{$deviceView}";
             }
-            $templates[] = "{$section}/{$widgetName}/{$widgetName}";
+            $templates[] = "{$section}/{$widgetName}/{$widgetName}{$rendering}";
         }
 
         if ($context->has('device_view')) {
-            $templates[] = "{$widgetName}/{$widgetName}.{$deviceView}";
+            $templates[] = "{$widgetName}/{$widgetName}{$rendering}.{$deviceView}";
         }
-        $templates[] = "{$widgetName}/{$widgetName}";
+        $templates[] = "{$widgetName}/{$widgetName}{$rendering}";
+
+        if ($rendering !== SlotRendering::SERVER) {
+            if ($context->has('device_view')) {
+                $templates[] = "widget{$rendering}.{$deviceView}";
+            }
+            $templates[] = "widget{$rendering}";
+        }
 
         $loader = $this->twig->getLoader();
         foreach ($templates as $template) {
@@ -141,12 +144,6 @@ class RenderWidgetRequestHandler implements RequestHandler
         return "@curator_widgets/{$platform}/missing_widget{$format}.twig";
     }
 
-    /**
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
     protected function getWidget(Message $request, Pbjx $pbjx): ?Message
     {
         if ($request->has('widget')) {
@@ -158,12 +155,9 @@ class RenderWidgetRequestHandler implements RequestHandler
         }
 
         try {
-            $widget = $this->ncr->getNode(
-                $request->get('widget_ref'),
-                false,
-                $this->createNcrContext($request)
+            return $this->ncr->getNode(
+                $request->get('widget_ref'), false, $this->createNcrContext($request)
             );
-            return $widget;
         } catch (\Throwable $e) {
             if ($this->twig->isDebug()) {
                 throw $e;
@@ -182,13 +176,6 @@ class RenderWidgetRequestHandler implements RequestHandler
         return null;
     }
 
-    /**
-     * @param Message $widget
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
     protected function runWidgetSearchRequest(Message $widget, Message $request, Pbjx $pbjx): ?Message
     {
         if (!$widget->has('search_request')) {
@@ -235,26 +222,5 @@ class RenderWidgetRequestHandler implements RequestHandler
         }
 
         return null;
-    }
-
-    /**
-     * @param Message $request
-     * @param Pbjx    $pbjx
-     *
-     * @return Message
-     */
-    protected function createRenderWidgetResponse(Message $request, Pbjx $pbjx): Message
-    {
-        return RenderWidgetResponseV1Mixin::findOne()->createMessage();
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function handlesCuries(): array
-    {
-        return [
-            RenderWidgetRequestV1Mixin::findOne()->getCurie(),
-        ];
     }
 }

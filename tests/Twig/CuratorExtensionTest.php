@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Triniti\Tests\Curator\Twig;
 
+use Acme\Schemas\Curator\Node\AdWidgetV1;
 use Acme\Schemas\Curator\Node\CodeWidgetV1;
 use Acme\Schemas\Curator\Request\RenderWidgetRequestV1;
 use Gdbots\Schemas\Ncr\NodeRef;
@@ -10,6 +11,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Triniti\Curator\RenderWidgetRequestHandler;
 use Triniti\Curator\Twig\CuratorExtension;
 use Triniti\Schemas\Common\RenderContextV1;
+use Triniti\Schemas\Curator\Enum\SlotRendering;
 use Triniti\Tests\Curator\AbstractPbjxTest;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
@@ -47,6 +49,44 @@ final class CuratorExtensionTest extends AbstractPbjxTest
             'context' => $context,
         ]);
         $expected = "{$widget}{$context}";
+
+        $this->assertSame(trim($expected), trim($actual));
+    }
+
+    public function testWithPlatformAndLazy(): void
+    {
+        $widget = CodeWidgetV1::create()->set('code', 'test');
+        $this->ncr->putNode($widget);
+
+        $context = RenderContextV1::create()
+            ->set('platform', 'web')
+            ->set('device_view', 'smartphone')
+            ->addToMap('strings', 'rendering', SlotRendering::LAZY);
+
+        $actual = $this->twig->render('curator_render_widget.twig', [
+            'pbj'     => NodeRef::fromNode($widget),
+            'context' => $context,
+        ]);
+        $expected = "LAZY={$widget}{$context}";
+
+        $this->assertSame(trim($expected), trim($actual));
+    }
+
+    public function testAdWidgetWithPlatformAndLazy(): void
+    {
+        $widget = AdWidgetV1::create()->set('dfp_ad_unit_path', '/taco/spice');
+        $this->ncr->putNode($widget);
+
+        $context = RenderContextV1::create()
+            ->set('platform', 'web')
+            ->set('device_view', 'desktop')
+            ->addToMap('strings', 'rendering', SlotRendering::LAZY);
+
+        $actual = $this->twig->render('curator_render_widget.twig', [
+            'pbj'     => NodeRef::fromNode($widget),
+            'context' => $context,
+        ]);
+        $expected = "LAZY_AD_WIDGET={$widget}{$context}";
 
         $this->assertSame(trim($expected), trim($actual));
     }
