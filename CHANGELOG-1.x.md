@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.6
+* Remove `TeaserTransformer::transformExpirable` so teasers that are synced with their targets can set their own `expires_at`.
+
+
 ## v1.4.5
 * Add `curator_find_promotion` and `curator_render_promotion_slots` twig functions.
 * Implement rendering of a promotion's `slots` in `RenderPromotionRequestHandler`.

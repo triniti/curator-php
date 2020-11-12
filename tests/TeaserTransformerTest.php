@@ -13,7 +13,6 @@ class TeaserTransformerTest extends TestCase
 {
     private $simpleFieldNames = [
         'ads_enabled',
-        'expires_at',
         'is_unlisted',
         'meta_description',
         'seo_title',
