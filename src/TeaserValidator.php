@@ -4,10 +4,9 @@ declare(strict_types=1);
 namespace Triniti\Curator;
 
 use Gdbots\Ncr\Ncr;
-use Gdbots\Pbj\Message;
 use Gdbots\Pbjx\DependencyInjection\PbjxValidator;
+use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Pbjx\EventSubscriber;
-use Gdbots\Pbjx\Pbjx;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Gdbots\Schemas\Ncr\NodeRef;
 use Triniti\Curator\Exception\TargetNotPublished;
@@ -30,8 +29,9 @@ class TeaserValidator implements EventSubscriber, PbjxValidator
         ];
     }
 
-    public function validatePublishNode(Message $command, Pbjx $pbjx): void
+    public function validatePublishNode(PbjxEvent $pbjxEvent): void
     {
+        $command = $pbjxEvent->getMessage();
         if (!$command->has('node_ref')) {
             return;
         }

@@ -7,6 +7,7 @@ use Acme\Schemas\Curator\Command\PublishTeaserV1;
 use Acme\Schemas\Curator\Node\ArticleTeaserV1;
 use Acme\Schemas\News\Node\ArticleV1;
 use Gdbots\Ncr\Exception\NodeNotFound;
+use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Gdbots\Schemas\Ncr\NodeRef;
 use Triniti\Curator\Exception\TargetNotPublished;
@@ -26,7 +27,8 @@ final class TeaserValidatorTest extends AbstractPbjxTest
 
         $validator = new TeaserValidator($this->ncr);
         $command = PublishTeaserV1::create()->set('node_ref', NodeRef::fromNode($teaser));
-        $validator->validatePublishNode($command, $this->pbjx);
+        $pbjxEvent = new PbjxEvent($command);
+        $validator->validatePublishNode($pbjxEvent);
     }
 
     public function testValidatePublishNodeWithTargetPublished(): void
@@ -39,7 +41,8 @@ final class TeaserValidatorTest extends AbstractPbjxTest
 
         $validator = new TeaserValidator($this->ncr);
         $command = PublishTeaserV1::create()->set('node_ref', NodeRef::fromNode($teaser));
-        $validator->validatePublishNode($command, $this->pbjx);
+        $pbjxEvent = new PbjxEvent($command);
+        $validator->validatePublishNode($pbjxEvent);
         $this->assertTrue(true, 'Teaser can be published.');
     }
 
@@ -54,7 +57,8 @@ final class TeaserValidatorTest extends AbstractPbjxTest
 
         $validator = new TeaserValidator($this->ncr);
         $command = PublishTeaserV1::create()->set('node_ref', NodeRef::fromNode($teaser));
-        $validator->validatePublishNode($command, $this->pbjx);
+        $pbjxEvent = new PbjxEvent($command);
+        $validator->validatePublishNode($pbjxEvent);
     }
 
     public function testValidatePublishNodeWithMissingTarget(): void
@@ -68,6 +72,7 @@ final class TeaserValidatorTest extends AbstractPbjxTest
 
         $validator = new TeaserValidator($this->ncr);
         $command = PublishTeaserV1::create()->set('node_ref', NodeRef::fromNode($teaser));
-        $validator->validatePublishNode($command, $this->pbjx);
+        $pbjxEvent = new PbjxEvent($command);
+        $validator->validatePublishNode($pbjxEvent);
     }
 }

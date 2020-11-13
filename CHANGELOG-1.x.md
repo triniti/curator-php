@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.8
+* Fix invalid `TeaserValidator::validatePublishNode` signature.  Needs `PbjxEvent`, not `(Message $command, Pbjx $pbjx)`.
+
+
 ## v1.4.7
 * Add `TeaserValidator` that requires a teaser's target to be published when it is being published.
 
