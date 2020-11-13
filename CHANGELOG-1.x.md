@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.7
+* Add `TeaserValidator` that requires a teaser's target to be published when it is being published.
+
+
 ## v1.4.6
 * Remove `TeaserTransformer::transformExpirable` so teasers that are synced with their targets can set their own `expires_at`.
 
