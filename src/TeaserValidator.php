@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Triniti\Curator;
 
 use Gdbots\Ncr\Ncr;
+use Gdbots\Pbj\MessageRef;
 use Gdbots\Pbjx\DependencyInjection\PbjxValidator;
 use Gdbots\Pbjx\Event\PbjxEvent;
 use Gdbots\Pbjx\EventSubscriber;
@@ -40,6 +41,16 @@ class TeaserValidator implements EventSubscriber, PbjxValidator
         $teaserRef = $command->get('node_ref');
         if (!$this->isTeaser($teaserRef)) {
             return;
+        }
+
+        // if we are publishing this teaser as a result of its target being
+        // published (effect of sync_with_target) then we ignore it.
+        if ($command->has('ctx_causator_ref')) {
+            /** @var MessageRef $causator */
+            $causator = $command->get('ctx_causator_ref');
+            if (strpos($causator->getCurie()->getMessage(), '-published')) {
+                return;
+            }
         }
 
         $teaser = $this->ncr->getNode($teaserRef);
