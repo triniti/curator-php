@@ -2,6 +2,10 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.10
+* Do not validate targets when scheduling teasers in `TeaserValidator::validatePublishNode`.
+
+
 ## v1.4.9
 * Fix bug in `TeaserValidator::validatePublishNode` where publishing a teaser fails when `sync_with_target:true` and its being published as a result of the target being published.
 

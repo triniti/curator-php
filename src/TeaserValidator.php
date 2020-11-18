@@ -43,6 +43,16 @@ class TeaserValidator implements EventSubscriber, PbjxValidator
             return;
         }
 
+        /** @var \DateTime $publishAt */
+        $publishAt = $command->get('publish_at') ?: $command->get('occurred_at')->toDateTime();
+        $now = time();
+
+        if ($publishAt->getTimestamp() > $now) {
+            // this teaser is being scheduled to publish and thus
+            // we don't need to validate the target yet.
+            return;
+        }
+
         // if we are publishing this teaser as a result of its target being
         // published (effect of sync_with_target) then we ignore it.
         if ($command->has('ctx_causator_ref')) {

@@ -64,6 +64,24 @@ final class TeaserValidatorTest extends AbstractPbjxTest
         $this->assertTrue(true, 'Teaser can be published.');
     }
 
+    public function testValidatePublishNodeWithScheduledTeaser(): void
+    {
+        $article = ArticleV1::create();
+        $this->ncr->putNode($article);
+
+        $teaser = ArticleTeaserV1::create()->set('target_ref', NodeRef::fromNode($article));
+        $this->ncr->putNode($teaser);
+
+        $validator = new TeaserValidator($this->ncr);
+        $command = PublishTeaserV1::create()
+            ->set('node_ref', NodeRef::fromNode($teaser))
+            ->set('publish_at', new \DateTime('+1 hour'));
+
+        $pbjxEvent = new PbjxEvent($command);
+        $validator->validatePublishNode($pbjxEvent);
+        $this->assertTrue(true, 'Teaser can be scheduled.');
+    }
+
     public function testValidatePublishNodeWithTargetDeletedCausator(): void
     {
         $this->expectException(TargetNotPublished::class);
