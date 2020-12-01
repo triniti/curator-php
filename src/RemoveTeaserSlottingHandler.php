@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Triniti\Curator;
 
 use Gdbots\Ncr\AggregateResolver;
-use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
 use Gdbots\Pbj\WellKnown\NodeRef;
@@ -15,13 +14,6 @@ use Triniti\Schemas\Curator\Request\SearchTeasersRequestV1;
 
 class RemoveTeaserSlottingHandler implements CommandHandler
 {
-    protected Ncr $ncr;
-
-    public function __construct(Ncr $ncr)
-    {
-        $this->ncr = $ncr;
-    }
-
     public static function handlesCuries(): array
     {
         // deprecated mixins, will be removed in 3.x

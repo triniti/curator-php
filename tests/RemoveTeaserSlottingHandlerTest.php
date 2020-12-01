@@ -37,7 +37,7 @@ final class RemoveTeaserSlottingHandlerTest extends AbstractPbjxTest
         );
         AggregateResolver::register(['acme:article-teaser' => 'Triniti\Curator\TeaserAggregate']);
         $command = RemoveTeaserSlottingV1::create()->addToMap('slotting', 'home', 1);
-        $handler = new RemoveTeaserSlottingHandler($this->ncr);
+        $handler = new RemoveTeaserSlottingHandler();
         $handler->handleCommand($command, $this->pbjx);
 
         foreach ($this->eventStore->pipeAllEvents() as [$event, $streamId]) {
