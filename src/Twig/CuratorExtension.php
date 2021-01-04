@@ -25,11 +25,6 @@ final class CuratorExtension extends AbstractExtension
     private RequestStack $requestStack;
     private LoggerInterface $logger;
 
-    /**
-     * @param Pbjx            $pbjx
-     * @param RequestStack    $requestStack
-     * @param LoggerInterface $logger
-     */
     public function __construct(Pbjx $pbjx, RequestStack $requestStack, ?LoggerInterface $logger = null)
     {
         $this->pbjx = $pbjx;
@@ -223,9 +218,6 @@ final class CuratorExtension extends AbstractExtension
         }
     }
 
-    /**
-     * @return Serializer
-     */
     private function getSerializer(): Serializer
     {
         if (null === self::$serializer) {
