@@ -78,7 +78,6 @@ final class CuratorExtension extends AbstractExtension
     {
         try {
             $request = RenderWidgetRequestV1::create();
-
             if (!$context instanceof Message) {
                 $container = $context['container'] ?? null;
                 if ($container instanceof Message) {
@@ -110,10 +109,7 @@ final class CuratorExtension extends AbstractExtension
 
             // ensures permission check is bypassed
             $request->set('ctx_causator_ref', $request->generateMessageRef());
-
-            /** @var Message $response */
             $response = $this->pbjx->request($request);
-
             return $returnResponse ? $response : trim($response->get('html', ''));
         } catch (\Throwable $e) {
             if ($twig->isDebug()) {
@@ -198,10 +194,7 @@ final class CuratorExtension extends AbstractExtension
 
             // ensures permission check is bypassed
             $request->set('ctx_causator_ref', $request->generateMessageRef());
-
-            /** @var Message $response */
             $response = $this->pbjx->request($request);
-
             if ($returnResponse) {
                 return $response;
             }

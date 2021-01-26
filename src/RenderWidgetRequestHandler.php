@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Triniti\Curator;
 
-
 use Gdbots\Ncr\Ncr;
 use Gdbots\Pbj\Message;
 use Gdbots\Pbj\MessageResolver;
@@ -40,13 +39,11 @@ class RenderWidgetRequestHandler implements RequestHandler
     public function handleRequest(Message $request, Pbjx $pbjx): Message
     {
         $response = RenderWidgetResponseV1::create();
-        $widget = $this->getWidget($request);
+        $widget = $this->getWidget($request, $pbjx);
 
         if (null === $widget) {
             return $response;
         }
-
-        $searchResponse = $this->runWidgetSearchRequest($widget, $request, $pbjx);
 
         /** @var Message $context */
         $context = $request->get('context');
@@ -137,7 +134,7 @@ class RenderWidgetRequestHandler implements RequestHandler
         return "@curator_widgets/{$platform}/missing_widget{$format}.twig";
     }
 
-    protected function getWidget(Message $request): ?Message
+    protected function getWidget(Message $request, Pbjx $pbjx): ?Message
     {
         if ($request->has('widget')) {
             return $request->get('widget');

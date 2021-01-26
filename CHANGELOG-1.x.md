@@ -2,6 +2,31 @@
 This changelog references the relevant changes done in 1.x versions.
 
 
+## v1.4.10
+* Do not validate targets when scheduling teasers in `TeaserValidator::validatePublishNode`.
+
+
+## v1.4.9
+* Fix bug in `TeaserValidator::validatePublishNode` where publishing a teaser fails when `sync_with_target:true` and its being published as a result of the target being published.
+
+
+## v1.4.8
+* Fix invalid `TeaserValidator::validatePublishNode` signature.  Needs `PbjxEvent`, not `(Message $command, Pbjx $pbjx)`.
+
+
+## v1.4.7
+* Add `TeaserValidator` that requires a teaser's target to be published when it is being published.
+
+
+## v1.4.6
+* Remove `TeaserTransformer::transformExpirable` so teasers that are synced with their targets can set their own `expires_at`.
+
+
+## v1.4.5
+* Add `curator_find_promotion` and `curator_render_promotion_slots` twig functions.
+* Implement rendering of a promotion's `slots` in `RenderPromotionRequestHandler`.
+
+
 ## v1.4.4
 * In `SyncTeaserHandler::shouldAutoCreateTeaser` just auto create for article, gallery and video by default.
 * In `NcrGalleryProjector` also update image counts when assets are deleted or expired.

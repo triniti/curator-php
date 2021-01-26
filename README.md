@@ -2,8 +2,6 @@ curator-php
 =============
 
 [![Build Status](https://api.travis-ci.org/triniti/curator-php.svg)](https://travis-ci.org/triniti/curator-php)
-[![Code Climate](https://codeclimate.com/github/triniti/curator-php/badges/gpa.svg)](https://codeclimate.com/github/triniti/curator-php)
-[![Test Coverage](https://codeclimate.com/github/triniti/curator-php/badges/coverage.svg)](https://codeclimate.com/github/triniti/curator-php/coverage)
 
 Php library that provides implementations for __triniti:curator__ schemas. Using this library assumes that you've already created and compiled your own pbj classes using the [Pbjc](https://github.com/gdbots/pbjc-php) and are making use of the __"triniti:curator:mixin:*"__ mixins from [triniti/schemas](https://github.com/triniti/schemas).
 
@@ -30,6 +28,29 @@ services:
 A few twig functions are provided to simplify rendering promotions and widgets.
 
 > The Twig extension is automatically available if using Symfony autowiring.
+
+### Twig Function: curator_find_promotion
+Returns the promotion if found for the given slot.
+
+__Arguments:__
+
++ `string $slot`
+
+
+__Example:__
+
+```txt
+# page.html.twig
+
+{# one promotion for the entire desktop-home screen #}
+{% set promotion = curator_find_promotion("#{device_view}-home") %}
+
+{{ curator_render_promotion_slots(promotion, {promotion_slot: 'header', section: 'header'}) }}
+{{ curator_render_promotion_slots(promotion, {promotion_slot: 'footer', section: 'footer'}) }}
+
+</body>
+</html>
+```
 
 ### Twig Function: curator_render_widget
 Renders a widget using the request with mixin `triniti:curator:mixin:render-widget-request`. The `html` field from the response with mixin `triniti:curator:mixin:render-widget-response` is returned and twig renders the raw value.
@@ -107,6 +128,43 @@ __Example:__
 
 {{ curator_render_promotion('smartphone-home-sidebar', {
   section: 'permalink',
+  booleans: {
+    enable_ads: true,
+    dnt: false,
+    autoplay_videos: false,
+  },
+  strings: {
+    custom1: 'val1',
+    custom2: 'val2',
+    customN: 'val3',
+  },
+}) }}
+
+</body>
+</html>
+```
+
+
+### Twig Function: curator_render_promotion_slots
+Rendering a promotion's slots is very similar to `curator_render_promotion` except in this case you already know the promotion and are  telling twig to render all the `slots` which are `triniti:curator::slot` instances. All slots matching the render context `promotion_slot` value will be rendered.
+
+> Using `triniti:curator::slot` allows you to render different code for server, client and lazy scenarios. See `triniti:curator:slot-rendering` enum.
+
+__Arguments:__
+
++ `Message|NodeRef|string $promotionOrRef`
++ `RenderContext|array $context`
++ `bool $returnResponse = false` For when you want the raw render response.
+
+
+__Example:__
+
+```txt
+# page.html.twig
+
+{{ curator_render_promotion_slots('acme:promotion:4a0a55f2-c6ac-4044-bcc0-cb7e47be2509', {
+  promotion_slot: 'jumbotron-top',
+  section: 'jumbotron',
   booleans: {
     enable_ads: true,
     dnt: false,

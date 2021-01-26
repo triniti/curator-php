@@ -40,7 +40,6 @@ class RenderPromotionRequestHandler implements RequestHandler
     {
         $response = RenderPromotionResponseV1::create();
         $promotion = $this->getPromotion($request, $pbjx);
-
         if (null === $promotion) {
             return $response;
         }
@@ -55,6 +54,7 @@ class RenderPromotionRequestHandler implements RequestHandler
         /** @var Message $context */
         $context = $request->get('context');
         $widgets = [];
+
         foreach ($promotion->get('widget_refs', []) as $widgetRef) {
             $widget = $this->renderWidget($widgetRef, $request, $context, $pbjx);
             if (null !== $widget) {
@@ -125,7 +125,6 @@ class RenderPromotionRequestHandler implements RequestHandler
         }
 
         try {
-            /** @var Message $searchRequest */
             $searchRequest = SearchPromotionsRequestV1::create()
                 ->set('count', 1)
                 ->set('status', NodeStatus::PUBLISHED())
@@ -135,7 +134,6 @@ class RenderPromotionRequestHandler implements RequestHandler
 
             /** @var Message $response */
             $response = $pbjx->copyContext($request, $searchRequest)->request($searchRequest);
-
             if (!$response->has('nodes')) {
                 return null;
             }
@@ -158,7 +156,6 @@ class RenderPromotionRequestHandler implements RequestHandler
     protected function renderWidget(NodeRef $widgetRef, Message $request, Message $context, Pbjx $pbjx): ?Message
     {
         try {
-            /** @var Message $renderRequest */
             $renderRequest = RenderWidgetRequestV1::create()
                 ->set('widget_ref', $widgetRef)
                 ->set('context', $context);
