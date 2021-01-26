@@ -52,9 +52,26 @@ class RenderPromotionRequestHandler implements RequestHandler
             return $response;
         }
 
+        /** @var Message $context */
+        $context = $request->get('context');
         $widgets = [];
         foreach ($promotion->get('widget_refs', []) as $widgetRef) {
-            $widget = $this->renderWidget($widgetRef, $request, $pbjx);
+            $widget = $this->renderWidget($widgetRef, $request, $context, $pbjx);
+            if (null !== $widget) {
+                $widgets[] = $widget;
+            }
+        }
+
+        $slotName = $context->get('promotion_slot');
+        /** @var Message $slot */
+        foreach ($promotion->get('slots', []) as $slot) {
+            if (!$slot->has('widget_ref') || $slotName !== $slot->get('name')) {
+                continue;
+            }
+
+            $context = clone $context;
+            $context->addToMap('strings', 'rendering', (string)$slot->get('rendering'));
+            $widget = $this->renderWidget($slot->get('widget_ref'), $request, $context, $pbjx);
             if (null !== $widget) {
                 $widgets[] = $widget;
             }
@@ -138,27 +155,22 @@ class RenderPromotionRequestHandler implements RequestHandler
         return null;
     }
 
-    protected function renderWidget(
-        NodeRef $widgetRef,
-        Message $request,
-        Pbjx $pbjx
-    ): ?Message {
+    protected function renderWidget(NodeRef $widgetRef, Message $request, Message $context, Pbjx $pbjx): ?Message
+    {
         try {
             /** @var Message $renderRequest */
             $renderRequest = RenderWidgetRequestV1::create()
                 ->set('widget_ref', $widgetRef)
-                ->set('context', $request->get('context'));
-
-            /** @var Message $response */
-            $response = $pbjx->copyContext($request, $renderRequest)->request($renderRequest);
-            return $response;
+                ->set('context', $context);
+            return $pbjx->copyContext($request, $renderRequest)->request($renderRequest);
         } catch (\Throwable $e) {
             $this->logger->warning(
                 'Unable to renderWidget for request [{pbj_schema}]',
                 [
-                    'exception'  => $e,
-                    'pbj_schema' => $request->schema()->getId()->toString(),
-                    'pbj'        => $request->toArray(),
+                    'exception'      => $e,
+                    'pbj_schema'     => $request->schema()->getId()->toString(),
+                    'pbj'            => $request->toArray(),
+                    'render_context' => $context->toArray(),
                 ]
             );
         }

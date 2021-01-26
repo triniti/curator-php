@@ -10,6 +10,7 @@ use Gdbots\Ncr\Repository\InMemoryNcr;
 use Gdbots\Pbj\SchemaCurie;
 use Gdbots\Schemas\Ncr\Enum\NodeStatus;
 use Triniti\Curator\RenderPromotionRequestHandler;
+use Triniti\Schemas\Common\RenderContextV1;
 
 final class RenderPromotionRequestHandlerTest extends AbstractPbjxTest
 {
@@ -33,7 +34,8 @@ final class RenderPromotionRequestHandlerTest extends AbstractPbjxTest
             ->addToList('widget_refs', [$widget->generateNodeRef()]);
         $this->ncr->putNode($promotion);
         $request = RenderPromotionRequestV1::create()
-            ->set('promotion_ref', $promotion->generateNodeRef());
+            ->set('promotion_ref', $promotion->generateNodeRef())
+            ->set('context', RenderContextV1::create());
 
         $handler = new RenderPromotionRequestHandler($this->ncr);
         $response = $handler->handleRequest($request, $this->pbjx);
@@ -60,7 +62,8 @@ final class RenderPromotionRequestHandlerTest extends AbstractPbjxTest
         $ncrSearch->indexNodes([$promotion]);
         $this->ncr->putNode($promotion);
         $request = RenderPromotionRequestV1::create()
-            ->set('slot', 'cool-slot');
+            ->set('slot', 'cool-slot')
+            ->set('context', RenderContextV1::create());
 
         $handler = new RenderPromotionRequestHandler($this->ncr);
         $response = $handler->handleRequest($request, $this->pbjx);
